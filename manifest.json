@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Prime Time Plus",
+  "version": "1.0.0",
+  "description": "Enhance Prime Time web app with additional functionality",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://provincieantwerpen.get.be/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://provincieantwerpen.get.be/Primetime/webapp/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Prime Time Plus"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
