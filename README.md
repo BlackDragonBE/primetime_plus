@@ -1,46 +1,49 @@
 # Prime Time Plus Chrome Extension
 
-A Chrome extension that enhances the Prime Time web application with additional functionality.
+A Chrome extension that enhances the Province of Antwerp Prime Time web application with additional functionality. Loads at `https://provincieantwerpen.get.be/Primetime/webapp/*`.
 
 ## Features
 
-- **Working Days Calculator**: Automatically converts time displays (e.g., "103:12") to include working days equivalent (e.g., "103:12 (13.53d)")
-- **Real-time Updates**: Monitors page changes and updates time displays dynamically
-- **Clean Integration**: Non-intrusive enhancement that preserves original functionality
+All toggleable from the extension popup. Defaults all on.
+
+- **Day-equivalent suffix** — appends `(Xd)` after `HH:MM` time labels on:
+  - Home page Saldi widget (e.g. `-11:10 (-1.47d)`)
+  - Dagresultaten Saldo column (per-row running balances)
+  - Afwezigheidsplanning sidebar (TJVu, WVu, BWVu, CFu, VVJu, TSAL5)
+  - Hover tooltips containing `HH:MM`
+- **Klaar-om voorspeller** — on Home, predicts the clock-out time that hits the 7:36 working-day target based on your `In` time, updates every minute
+- **Live Dagtotaal** — on Dagresultaten today's row, runs the day total in real time while still clocked in
+- **Week- en maandtotalen** — aggregates the visible Dagresultaten period into per-ISO-week and per-month totals with target-delta
+- **Kleurcodering** — tints Dagresultaten rows green / red based on Dagtotaal vs Rooster (skips WE+FE / VRIJ)
+- **Vergeten Uit-boeking** — orange outline + ⚠ on past days where you have an `In` without a matching `Uit`
 
 ## Installation
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" in the top right
 3. Click "Load unpacked" and select this directory
-4. Navigate to the Prime Time web app at `https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl`
+4. Open the Prime Time web app at `https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl`
+5. Click the extension icon to toggle individual features
 
 ## Configuration
 
-- **Working Day**: 7 hours and 36 minutes (456 minutes)
-- **Target Elements**: Elements matching `.gwt-HTML.primion-label.gwt-Label[class*="eu-primion-xtremis-client-home-Css-clickableLink"]` (GWT obfuscated prefix intentionally excluded to survive app recompilation)
+- **Working day**: 7 hours and 36 minutes (456 minutes), used as the day-equivalent divisor and the predictor target
+- **Persistence**: feature toggles are stored in `chrome.storage.local`
 
 ## Architecture
 
-The extension is built with extensibility in mind:
+- `content.js` — `PrimeTimePlus` class with one enhancer per page area, a single `MutationObserver` for re-rendering, and two interval timers (predictor + live dagtotaal). Page detection is by DOM landmark (`.balancesWidgetTitle`, `table.dataTable`, `.balancePanel`) because the GWT app's URL never changes.
+- `popup.html` / `popup.js` — feature toggles synced via `chrome.storage.local`.
+- `manifest.json` — `activeTab` + `storage`, single host permission.
 
-- `content.js`: Main logic in a class-based structure
-- `manifest.json`: Extension configuration
-- `popup.html/js`: User interface and status display
-- Modular design allows easy addition of new features
+### Selector strategy
 
-## Adding New Features
+The GWT prefix (`GKKUY21BGQB-`) on app classes changes whenever the backend recompiles the GWT module. Selectors deliberately match on the suffix (`eu-primion-xtremis-client-home-Css-clickableLink`) and on stable structural classes (`balancePanel`, `balancesWidgetTitle`, `dataTable`, `journal-grid-row`, `in-cell`, `out-cell`, `journal-day-cell`).
 
-To extend the extension:
+### Adding new features
 
-1. Add new methods to the `PrimeTimePlus` class in `content.js`
-2. Update the popup interface if needed
-3. Add new permissions to `manifest.json` if required
+Add a new method to `PrimeTimePlus`, call it from `refresh()`, gate it on a setting in `DEFAULT_SETTINGS`, expose the toggle in `popup.html`. Re-use `parseTime`, `formatHHMM`, `formatDays`, `applySuffix`, `parseDatumCell`, `readMultiTimes`, `readSingleTimeCell`, `readRoosterMinutes`.
 
 ## Development
 
-The extension uses Manifest V3 and follows Chrome extension best practices:
-- Content scripts for DOM manipulation
-- Popup for user interface
-- Proper permissions and host restrictions
-- MutationObserver for dynamic content handling
+Manifest V3, `run_at: document_end`, no background worker. The `MutationObserver` is debounced to a 150 ms tail to absorb GWT batch re-renders.

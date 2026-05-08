@@ -4,81 +4,154 @@
   <meta charset="utf-8">
   <style>
     body {
-      width: 300px;
-      padding: 20px;
+      width: 320px;
+      padding: 16px;
       font-family: Arial, sans-serif;
+      margin: 0;
     }
-    
+
     .header {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 14px;
     }
-    
+
     .logo {
       font-size: 18px;
       font-weight: bold;
       color: #2c3e50;
     }
-    
+
     .version {
       font-size: 12px;
       color: #7f8c8d;
     }
-    
-    .info {
-      background-color: #ecf0f1;
-      padding: 15px;
-      border-radius: 5px;
-      margin-bottom: 15px;
-    }
-    
-    .feature {
-      display: flex;
-      align-items: center;
-      margin: 10px 0;
-    }
-    
-    .feature-icon {
-      width: 16px;
-      height: 16px;
-      margin-right: 10px;
-      background-color: #27ae60;
-      border-radius: 50%;
-    }
-    
-    .feature-text {
-      font-size: 14px;
-      color: #2c3e50;
-    }
-    
+
     .status {
       text-align: center;
-      padding: 10px;
+      padding: 8px;
       background-color: #d5f4e6;
-      border-radius: 5px;
+      border-radius: 4px;
       color: #27ae60;
       font-weight: bold;
+      margin-bottom: 14px;
+    }
+
+    .status.warn {
+      background-color: #ffeaa7;
+      color: #b9770e;
+      cursor: pointer;
+    }
+
+    h3 {
+      font-size: 13px;
+      color: #2c3e50;
+      margin: 12px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-top: 1px solid #ecf0f1;
+    }
+
+    .toggle:first-of-type {
+      border-top: none;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #2c3e50;
+      flex: 1;
+      padding-right: 8px;
+    }
+
+    .toggle-label small {
+      display: block;
+      color: #7f8c8d;
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 11px;
+      color: #95a5a6;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="logo">Prime Time Plus</div>
-    <div class="version">v1.0.0</div>
+    <div class="version">v1.1.0</div>
   </div>
-  
-  <div class="info">
-    <h3>Active Features:</h3>
-    <div class="feature">
-      <div class="feature-icon"></div>
-      <div class="feature-text">Working days calculator</div>
-    </div>
-  </div>
-  
-  <div class="status">
-    ✓ Extension Active
-  </div>
-  
+
+  <div class="status" id="status">✓ Extension Active</div>
+
+  <h3>Functies</h3>
+
+  <label class="toggle">
+    <span class="toggle-label">Dagen-suffix
+      <small>Toont (Xd) achter HH:MM op Home, Dagresultaten en Afwezigheidsplanning</small>
+    </span>
+    <input type="checkbox" data-setting="daysSuffix">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Klaar-om voorspeller
+      <small>Toont op Home wanneer 7:36 is bereikt</small>
+    </span>
+    <input type="checkbox" data-setting="predictor">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Live dagtotaal
+      <small>Loopt mee op vandaag in Dagresultaten</small>
+    </span>
+    <input type="checkbox" data-setting="liveDagtotaal">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Week- en maandtotalen
+      <small>Toont aggregaten boven Dagresultaten-tabel</small>
+    </span>
+    <input type="checkbox" data-setting="weekMonthTotals">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Kleurcodering
+      <small>Groen/rood per rij vs Rooster</small>
+    </span>
+    <input type="checkbox" data-setting="colorCoding">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Vergeten Uit-boeking
+      <small>Markeert dagen met In zonder Uit</small>
+    </span>
+    <input type="checkbox" data-setting="forgottenClockout">
+  </label>
+
+  <label class="toggle">
+    <span class="toggle-label">Tooltips
+      <small>Voegt dagen toe aan hover-tooltips</small>
+    </span>
+    <input type="checkbox" data-setting="tooltips">
+  </label>
+
+  <div class="footer">Werkdag = 7u 36m</div>
+
   <script src="popup.js"></script>
 </body>
 </html>
