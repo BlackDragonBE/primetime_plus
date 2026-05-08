@@ -17,8 +17,8 @@ A Chrome extension that enhances the Prime Time web application with additional 
 
 ## Configuration
 
-- **Working Day**: 8 hours and 36 minutes (516 minutes total)
-- **Target Elements**: Elements with class `gwt-HTML primion-label gwt-Label GKPVO15PNB-eu-primion-xtremis-client-home-Css-clickableLink`
+- **Working Day**: 7 hours and 36 minutes (456 minutes)
+- **Target Elements**: Elements matching `.gwt-HTML.primion-label.gwt-Label[class*="eu-primion-xtremis-client-home-Css-clickableLink"]` (GWT obfuscated prefix intentionally excluded to survive app recompilation)
 
 ## Architecture
 

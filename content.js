@@ -14,7 +14,7 @@ class PrimeTimePlus {
   }
 
   enhanceTimeElements() {
-    const timeElements = document.querySelectorAll('.gwt-HTML.primion-label.gwt-Label.GKPVO15PNB-eu-primion-xtremis-client-home-Css-clickableLink');
+    const timeElements = document.querySelectorAll('.gwt-HTML.primion-label.gwt-Label[class*="eu-primion-xtremis-client-home-Css-clickableLink"]');
     
     timeElements.forEach(element => {
       if (!this.processedElements.has(element)) {
@@ -36,20 +36,22 @@ class PrimeTimePlus {
   }
 
   isValidTimeFormat(text) {
-    return /^\d+:\d{2}$/.test(text);
+    return /^-?\d+:\d{2}$/.test(text);
   }
 
   calculateWorkingDays(timeString) {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
+    const negative = timeString.startsWith('-');
+    const [hours, minutes] = timeString.replace(/^-/, '').split(':').map(Number);
+
     if (isNaN(hours) || isNaN(minutes)) {
       return null;
     }
 
     const totalMinutes = hours * 60 + minutes;
     const workingDays = totalMinutes / this.WORKING_DAY_TOTAL_MINUTES;
-    
-    return Math.round(workingDays * 100) / 100;
+    const rounded = Math.round(workingDays * 100) / 100;
+
+    return negative ? -rounded : rounded;
   }
 
   updateElementText(element, originalTime, workingDays) {
