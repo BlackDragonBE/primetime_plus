@@ -53,8 +53,9 @@ There is a known commit (`5f4457c`) that fixed broken selectors after a GWT reco
 
 ### Domain constants
 
-- **Working day = 7h 36m = 456 min** (`workingDayMinutes` in `DEFAULT_SETTINGS`). Used as both the day-equivalent divisor (`X:YY (Zd)`) and the predictor target.
-- **Weekly target** = `5 × 456 = 2280 min` (38:00). Used by the aggregate panel's Δ column.
+- **Working day = 8h 6m = 486 min** (`workingDayMinutes` in `DEFAULT_SETTINGS`). Used as the predictor target and the week/month totals divisor. Includes the 30-minute lunch break.
+- **Leave day = 7h 36m = 456 min** (`leaveDayMinutes` in `DEFAULT_SETTINGS`). Used as the day-equivalent divisor for all balance/saldo displays (TJVu, TSALD, TSAL5) and tooltips. Excludes the break — this is how leave is officially counted.
+- **Weekly target** = `5 × 486 = 2430 min` (40:30). Used by the aggregate panel's Δ column.
 
 ### Cell-parsing quirks worth knowing
 
@@ -63,6 +64,7 @@ There is a known commit (`5f4457c`) that fixed broken selectors after a GWT reco
 - **Today detection** is done by parsing the Datum cell text (`vr 8 mei`) against `new Date()`, not via a CSS class — there is no "today" class on the row.
 - **Year inference** in `parseDatumCell` adjusts ±1 year when the visible period crosses a January boundary.
 - **Afwezigheidsplanning sidebar** lives inside an `overflow:hidden` wrapper that clips inline overflow. Use `applyBlockSuffix` (renders day equivalent on a new line) here, not the inline `applySuffix`.
+- **Aanwezigheid cell** in Dagresultaten is `row.cells[8]` (In=3, Uit=5, Dagtotaal=7, with `+` spacer cells at the even indices in between). It holds a nested table; each inner `tr` is `[code, HH:MM, '']` where `code` is `THUIS` (home work) or a worksite code like `AK` (office). `readAanwezigheidCell` sums minutes split home vs office for the Thuiswerk-ratio (`thuiswerkRatio` setting).
 
 ### Chrome MCP gotcha during dev
 

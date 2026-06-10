@@ -3,6 +3,7 @@ const DEFAULT_SETTINGS = {
   predictor: true,
   liveDagtotaal: true,
   weekMonthTotals: true,
+  thuiswerkRatio: true,
   colorCoding: true,
   forgottenClockout: true,
   tooltips: true,

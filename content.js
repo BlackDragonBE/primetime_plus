@@ -20,10 +20,12 @@ const DEFAULT_SETTINGS = {
   predictor: true,
   liveDagtotaal: true,
   weekMonthTotals: true,
+  thuiswerkRatio: true,
   colorCoding: true,
   forgottenClockout: true,
   tooltips: true,
-  workingDayMinutes: 7 * 60 + 36,
+  workingDayMinutes: 8 * 60 + 6,
+  leaveDayMinutes: 7 * 60 + 36,
 };
 
 class PrimeTimePlus {
@@ -169,8 +171,9 @@ class PrimeTimePlus {
     return (negative ? '-' : '') + hh + ':' + String(mm).padStart(2, '0');
   }
 
-  formatDays(totalMinutes) {
-    const days = totalMinutes / this.settings.workingDayMinutes;
+  formatDays(totalMinutes, minutesPerDay) {
+    const divisor = minutesPerDay !== undefined ? minutesPerDay : this.settings.workingDayMinutes;
+    const days = totalMinutes / divisor;
     const rounded = Math.round(days * 100) / 100;
     return rounded + 'd';
   }
@@ -179,16 +182,16 @@ class PrimeTimePlus {
    * Generic suffix enhancer
    * =========================================================== */
 
-  applySuffix(element, originalText, totalMinutes) {
+  applySuffix(element, originalText, totalMinutes, minutesPerDay) {
     if (!this.settings.daysSuffix) return;
     if (element.getAttribute(TAG) === 'suffix') return;
-    const suffix = ' (' + this.formatDays(totalMinutes) + ')';
+    const suffix = ' (' + this.formatDays(totalMinutes, minutesPerDay) + ')';
     element.setAttribute(TAG, 'suffix');
     element.setAttribute('data-pt-original', originalText);
     element.textContent = originalText + suffix;
   }
 
-  applyBlockSuffix(element, totalMinutes) {
+  applyBlockSuffix(element, totalMinutes, minutesPerDay) {
     if (!this.settings.daysSuffix) return;
     if (element.getAttribute(TAG) === 'block-suffix') return;
     if (element.querySelector('.pt-day-equiv')) return;
@@ -197,7 +200,7 @@ class PrimeTimePlus {
     span.setAttribute(TAG, 'injected');
     span.style.cssText =
       'display:block;font-size:0.85em;color:#7f8c8d;font-style:italic;';
-    span.textContent = this.formatDays(totalMinutes);
+    span.textContent = this.formatDays(totalMinutes, minutesPerDay);
     element.setAttribute(TAG, 'block-suffix');
     element.appendChild(span);
   }
@@ -222,7 +225,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applySuffix(el, text, minutes);
+      this.applySuffix(el, text, minutes, this.settings.leaveDayMinutes);
     });
   }
 
@@ -272,10 +275,14 @@ class PrimeTimePlus {
 
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const target = this.settings.workingDayMinutes;
 
-    const worked = this.computeWorkedMinutes(inOutTimes.ins, inOutTimes.outs, nowMinutes);
-    const stillNeeded = target - worked;
+    const sortedIns = [...inOutTimes.ins].sort((a, b) => a - b);
+    const sortedOuts = [...inOutTimes.outs].sort((a, b) => a - b);
+    const firstIn = sortedIns[0];
+    const breakMinutes = this.computeBreakMinutes(sortedIns, sortedOuts, nowMinutes);
+    const extraBreak = Math.max(0, breakMinutes - 30);
+    const finishMinutes = firstIn + this.settings.workingDayMinutes + extraBreak;
+    const stillNeeded = finishMinutes - nowMinutes;
 
     if (stillNeeded <= 0) {
       const overshoot = -stillNeeded;
@@ -286,12 +293,11 @@ class PrimeTimePlus {
       return;
     }
 
-    const finishMinutes = nowMinutes + stillNeeded;
     const fh = Math.floor(finishMinutes / 60) % 24;
     const fm = finishMinutes % 60;
     const finishStr = String(fh).padStart(2, '0') + ':' + String(fm).padStart(2, '0');
     widget.textContent =
-      'Klaar om ' + finishStr + ' (' + this.formatHHMM(stillNeeded) + ' te gaan)';
+      'Tot ' + finishStr + ' (nog ' + this.formatHHMM(stillNeeded) + ')';
     widget.style.background = '#ecf6ff';
     widget.style.borderColor = '#b8d8f0';
   }
@@ -337,6 +343,19 @@ class PrimeTimePlus {
     return total;
   }
 
+  computeBreakMinutes(ins, outs, nowMinutes) {
+    if (outs.length === 0) return 0;
+    const sortedIns = [...ins].sort((a, b) => a - b);
+    const sortedOuts = [...outs].sort((a, b) => a - b);
+    let total = 0;
+    for (let i = 0; i < sortedOuts.length; i++) {
+      const breakStart = sortedOuts[i];
+      const breakEnd = i + 1 < sortedIns.length ? sortedIns[i + 1] : nowMinutes;
+      if (breakEnd > breakStart) total += breakEnd - breakStart;
+    }
+    return total;
+  }
+
   /* ===========================================================
    * Dagresultaten - per-row enhancements
    * =========================================================== */
@@ -352,6 +371,14 @@ class PrimeTimePlus {
 
     if (this.settings.weekMonthTotals) {
       this.renderDagAggregates(table, rows);
+    }
+
+    if (!document.querySelector('#pt-dag-height-fix')) {
+      const style = document.createElement('style');
+      style.id = 'pt-dag-height-fix';
+      style.setAttribute(TAG, 'injected');
+      style.textContent = '.gwt-ScrollTable.journal { height: 720px !important; }';
+      document.head.appendChild(style);
     }
   }
 
@@ -397,7 +424,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applySuffix(td, text, minutes);
+      this.applySuffix(td, text, minutes, this.settings.leaveDayMinutes);
     });
   }
 
@@ -547,6 +574,7 @@ class PrimeTimePlus {
       .join('');
 
     container.innerHTML =
+      this.renderThuiswerkBadges(aggregates.months) +
       '<div style="font-weight:bold;margin-bottom:4px">PrimeTime+ totalen</div>' +
       '<table style="border-collapse:collapse;width:100%">' +
       '<thead><tr style="border-bottom:1px solid #ccc">' +
@@ -563,6 +591,43 @@ class PrimeTimePlus {
     parent.insertBefore(container, table);
   }
 
+  /* Home-vs-office ratio, one pill per month. Pill turns red when home
+   * work exceeds 50% of clocked presence (the telework ceiling). */
+  renderThuiswerkBadges(months) {
+    if (!this.settings.thuiswerkRatio) return '';
+    const pills = months
+      .map((m) => {
+        const presence = m.homeMinutes + m.officeMinutes;
+        if (presence <= 0) return '';
+        const pct = Math.round((m.homeMinutes / presence) * 100);
+        const high = pct > 50;
+        const bg = high ? '#fdecea' : '#eafaf1';
+        const border = high ? '#e74c3c' : '#27ae60';
+        const fg = high ? '#c0392b' : '#1e8449';
+        const detail =
+          this.formatHHMM(m.homeMinutes) + ' thuis / ' +
+          this.formatHHMM(presence) + ' totaal';
+        return (
+          '<div title="' + m.label + ' — ' + detail + '" style="' +
+          'flex:1 1 160px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;' +
+          'padding:8px 12px;border:1px solid ' + border + ';border-left:4px solid ' + border + ';' +
+          'border-radius:6px;background:' + bg + '">' +
+          '<span style="font-size:16px;font-weight:bold;color:' + fg + '">' +
+          pct + '% Thuiswerk</span>' +
+          '<span style="font-size:11px;color:#5a6b7b">' +
+          m.label + ' · ' + detail + '</span>' +
+          '</div>'
+        );
+      })
+      .join('');
+    if (!pills) return '';
+    return (
+      '<div style="font-weight:bold;margin-bottom:6px">Thuiswerk-ratio</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
+      pills + '</div>'
+    );
+  }
+
   computeAggregates(rows) {
     const weeks = new Map();
     const months = new Map();
@@ -574,6 +639,7 @@ class PrimeTimePlus {
       if (!dateInfo) return;
       const dagtotaalMinutes = this.readSingleTimeCell(cells[7]);
       if (dagtotaalMinutes === null) return;
+      const presence = this.readAanwezigheidCell(cells[8]);
 
       const weekKey = this.isoWeekKey(dateInfo.date);
       const monthKey = dateInfo.date.getFullYear() + '-' + (dateInfo.date.getMonth() + 1);
@@ -595,11 +661,15 @@ class PrimeTimePlus {
           label: monthLabel,
           workedMinutes: 0,
           daysWorked: 0,
+          homeMinutes: 0,
+          officeMinutes: 0,
         });
       }
       const m = months.get(monthKey);
       m.workedMinutes += dagtotaalMinutes;
       if (dagtotaalMinutes > 0) m.daysWorked += 1;
+      m.homeMinutes += presence.home;
+      m.officeMinutes += presence.office;
     });
 
     if (weeks.size === 0 && months.size === 0) return null;
@@ -646,6 +716,25 @@ class PrimeTimePlus {
       }
     });
     return times;
+  }
+
+  /* Aanwezigheid cell: nested table, one inner row per presence block.
+   * Each inner row is [code, HH:MM, ''] where code is THUIS (home) or a
+   * worksite code such as AK (office). Returns minutes split by location. */
+  readAanwezigheidCell(cell) {
+    const result = { home: 0, office: 0 };
+    if (!cell) return result;
+    const innerRows = cell.querySelectorAll('table tbody tr');
+    innerRows.forEach((tr) => {
+      const tds = tr.cells;
+      if (tds.length < 2) return;
+      const code = tds[0].textContent.trim().toUpperCase();
+      const minutes = this.parseTime(tds[1].textContent.trim());
+      if (minutes === null || minutes <= 0) return;
+      if (code.includes('THUIS')) result.home += minutes;
+      else result.office += minutes;
+    });
+    return result;
   }
 
   readRoosterMinutes(cell) {
@@ -707,7 +796,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applyBlockSuffix(el, minutes);
+      this.applyBlockSuffix(el, minutes, this.settings.leaveDayMinutes);
     });
   }
 
@@ -727,7 +816,7 @@ class PrimeTimePlus {
         const minutes = this.parseTime(match);
         if (minutes === null) return match;
         changed = true;
-        return match + ' (' + this.formatDays(minutes) + ')';
+        return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes) + ')';
       });
       if (changed) {
         el.setAttribute(TAG, 'tooltip');

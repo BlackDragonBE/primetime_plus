@@ -27,7 +27,7 @@ All toggleable from the extension popup. Defaults all on.
 
 ## Configuration
 
-- **Working day**: 7 hours and 36 minutes (456 minutes), used as the day-equivalent divisor and the predictor target
+- **Working day**: 8 hours and 6 minutes (486 minutes), used as the day-equivalent divisor and the predictor target
 - **Persistence**: feature toggles are stored in `chrome.storage.local`
 
 ## Architecture
