@@ -360,8 +360,15 @@ class PrimeTimePlus {
    * Dagresultaten - per-row enhancements
    * =========================================================== */
 
+  /* Supervisor view renders several table.dataTable elements; the journal is
+   * not always the first. Pick the one that actually holds the day rows. */
+  findJournalTable() {
+    return [...document.querySelectorAll('table.dataTable')]
+      .find((t) => t.querySelector('tr.journal-grid-row')) || null;
+  }
+
   enhanceDagresultaten() {
-    const table = document.querySelector('table.dataTable');
+    const table = this.findJournalTable();
     if (!table) return;
 
     const rows = Array.from(table.querySelectorAll('tr.journal-grid-row'));
@@ -494,7 +501,7 @@ class PrimeTimePlus {
   updateLiveDagtotaal() {
     const badges = document.querySelectorAll('.pt-live-dagtotaal[data-live="1"]');
     if (badges.length === 0) return;
-    const table = document.querySelector('table.dataTable');
+    const table = this.findJournalTable();
     if (!table) return;
     const rows = Array.from(table.querySelectorAll('tr.journal-grid-row'));
     rows.forEach((row) => {
