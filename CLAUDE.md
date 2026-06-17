@@ -22,7 +22,7 @@ For browser-side verification, the live app is at `https://provincieantwerpen.ge
 The PrimeTime app is a **GWT single-page app**: the URL never changes when you switch tabs. Page detection is by DOM landmark presence, not URL:
 
 - **Home** → `.balancesWidgetTitle` (Saldi widget) + `.roundedBookingWidget` (clock-in panel with `.digital-clock`).
-- **Dagresultaten** → `table.dataTable` with `tr.journal-grid-row` rows.
+- **Dagresultaten** → `table.dataTable` with `tr.journal-grid-row` rows. Find the journal table via `findJournalTable()`, never `querySelector('table.dataTable')` — the **Supervisor view** ("Dagelijks beheer" tab, manager-only) renders the *same* Dagresultaten table but with multiple `table.dataTable` siblings where the journal is not the first. `findJournalTable()` picks the one that actually contains `tr.journal-grid-row`. The employee view has only one, so it works on both.
 - **Afwezigheidsplanning** → `.balancePanel` (Saldi sidebar).
 
 Each enhancer in `content.js` checks for its landmark and silently no-ops on other pages. `refresh()` runs every enhancer; the right ones light up based on which page is current.
@@ -65,6 +65,10 @@ There is a known commit (`5f4457c`) that fixed broken selectors after a GWT reco
 - **Year inference** in `parseDatumCell` adjusts ±1 year when the visible period crosses a January boundary.
 - **Afwezigheidsplanning sidebar** lives inside an `overflow:hidden` wrapper that clips inline overflow. Use `applyBlockSuffix` (renders day equivalent on a new line) here, not the inline `applySuffix`.
 - **Aanwezigheid cell** in Dagresultaten is `row.cells[8]` (In=3, Uit=5, Dagtotaal=7, with `+` spacer cells at the even indices in between). It holds a nested table; each inner `tr` is `[code, HH:MM, '']` where `code` is `THUIS` (home work) or a worksite code like `AK` (office). `readAanwezigheidCell` sums minutes split home vs office for the Thuiswerk-ratio (`thuiswerkRatio` setting).
+
+### Supervisor view (manager-only)
+
+Managers have an extra **Supervisor → Dagresultaten** view showing any employee's data. It reuses the identical Dagresultaten table structure (same column indices, same nested Aanwezigheid table), so all Dagresultaten enhancers work there unchanged — **except** that the page has multiple `table.dataTable` siblings, hence `findJournalTable()`. If a Dagresultaten feature renders on the employee view but not for a manager, suspect the table selector first: probe `document.querySelectorAll('table.dataTable').length` vs which one holds `tr.journal-grid-row`. Diagnosable from a manager's console without manager access yourself — the visible layout is identical, only the table count differs.
 
 ### Chrome MCP gotcha during dev
 
