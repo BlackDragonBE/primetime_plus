@@ -376,8 +376,12 @@ class PrimeTimePlus {
 
     rows.forEach((row) => this.enhanceDagRow(row));
 
-    if (this.settings.weekMonthTotals) {
-      this.renderDagAggregates(table, rows);
+    if (this.settings.weekMonthTotals || this.settings.thuiswerkRatio) {
+      const aggregates = this.computeAggregates(rows);
+      if (aggregates) {
+        if (this.settings.weekMonthTotals) this.renderDagAggregates(table, aggregates);
+        if (this.settings.thuiswerkRatio) this.renderThuiswerkPanel(table, aggregates.months);
+      }
     }
 
     if (!document.querySelector('#pt-dag-height-fix')) {
@@ -521,11 +525,8 @@ class PrimeTimePlus {
 
   /* ---------- Aggregates (week / month) ---------- */
 
-  renderDagAggregates(table, rows) {
+  renderDagAggregates(table, aggregates) {
     document.querySelectorAll('.pt-aggregates').forEach((el) => el.remove());
-
-    const aggregates = this.computeAggregates(rows);
-    if (!aggregates) return;
 
     const container = document.createElement('div');
     container.className = 'pt-aggregates';
@@ -581,7 +582,6 @@ class PrimeTimePlus {
       .join('');
 
     container.innerHTML =
-      this.renderThuiswerkBadges(aggregates.months) +
       '<div style="font-weight:bold;margin-bottom:4px">PrimeTime+ totalen</div>' +
       '<table style="border-collapse:collapse;width:100%">' +
       '<thead><tr style="border-bottom:1px solid #ccc">' +
@@ -600,8 +600,8 @@ class PrimeTimePlus {
 
   /* Home-vs-office ratio, one pill per month. Pill turns red when home
    * work exceeds 50% of clocked presence (the telework ceiling). */
-  renderThuiswerkBadges(months) {
-    if (!this.settings.thuiswerkRatio) return '';
+  renderThuiswerkPanel(table, months) {
+    document.querySelectorAll('.pt-thuiswerk').forEach((el) => el.remove());
     const pills = months
       .map((m) => {
         const presence = m.homeMinutes + m.officeMinutes;
@@ -627,12 +627,19 @@ class PrimeTimePlus {
         );
       })
       .join('');
-    if (!pills) return '';
-    return (
+    if (!pills) return;
+
+    const container = document.createElement('div');
+    container.className = 'pt-thuiswerk';
+    container.setAttribute(TAG, 'injected');
+    container.style.cssText = 'margin:8px 0';
+    container.innerHTML =
       '<div style="font-weight:bold;margin-bottom:6px">Thuiswerk-ratio</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
-      pills + '</div>'
-    );
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+      pills + '</div>';
+
+    const parent = table.parentElement;
+    parent.insertBefore(container, parent.querySelector('.pt-aggregates') || table);
   }
 
   computeAggregates(rows) {
