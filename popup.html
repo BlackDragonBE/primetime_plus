@@ -75,6 +75,20 @@
       margin-bottom: 14px;
     }
 
+    .open-app {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      padding: 8px;
+      background-color: var(--toggle-on);
+      border-radius: 4px;
+      color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+      margin-bottom: 10px;
+    }
+
     .status.warn {
       background-color: var(--status-warn-bg);
       color: var(--status-warn-fg);
@@ -163,6 +177,8 @@
     <div class="logo">Prime Time Plus</div>
     <div class="version" id="version"></div>
   </div>
+
+  <a class="open-app" href="https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl" target="_blank" rel="noopener">↗ Open PrimeTime</a>
 
   <button class="status" id="status" type="button" disabled>✓ Extension Active</button>
 
