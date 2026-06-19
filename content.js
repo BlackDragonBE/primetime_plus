@@ -54,10 +54,78 @@ class PrimeTimePlus {
   }
 
   start() {
+    this.injectStyles();
     this.refresh();
     this.observe();
     this.startTimers();
     this.listenForSettingChanges();
+  }
+
+  injectStyles() {
+    if (document.getElementById('pt-plus-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'pt-plus-styles';
+    style.setAttribute(TAG, 'injected');
+    style.textContent = `
+      :root {
+        --pt-good: #27ae60; --pt-good-bg: #eafaf1;
+        --pt-bad: #e74c3c;  --pt-bad-bg: #fdecea;
+        --pt-info: #1f6feb; --pt-info-bg: #ecf6ff; --pt-info-border: #b8d8f0;
+        --pt-done-bg: #e3f7e3; --pt-done-border: #9bd49b;
+        --pt-muted: #7f8c8d; --pt-text: #2c3e50;
+        --pt-card-bg: #fafafa; --pt-card-border: #ddd; --pt-radius: 4px;
+      }
+      .gwt-ScrollTable.journal { height: 720px !important; }
+      /* shared card base */
+      .pt-aggregates, .pt-thuiswerk {
+        margin: 8px 0; padding: 8px 12px; border-radius: var(--pt-radius);
+        background: var(--pt-card-bg); border: 1px solid var(--pt-card-border);
+        font-size: 12px; color: var(--pt-text);
+      }
+      /* shared panel header */
+      .pt-agg-header, .pt-thuiswerk-header {
+        font-weight: bold; margin-bottom: 6px;
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--pt-muted);
+      }
+      .pt-aggregates table { border-collapse: collapse; width: 100%; }
+      .pt-aggregates thead tr { border-bottom: 1px solid #ccc; }
+      .pt-aggregates th, .pt-aggregates td { padding: 2px 8px; }
+      .pt-aggregates th:first-child, .pt-aggregates td:first-child { text-align: left; }
+      .pt-aggregates th:not(:first-child), .pt-aggregates td:not(:first-child) { text-align: right; }
+      .pt-delta-pos { color: #1a7f37; } .pt-delta-neg { color: #cf222e; } .pt-delta-cur { color: #888; }
+      .pt-thuiswerk-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+      .pt-pill {
+        flex: 1 1 160px; display: flex; flex-direction: column;
+        align-items: flex-start; gap: 2px; padding: 8px 12px; border-radius: 6px;
+      }
+      .pt-pill-ok  { background: var(--pt-good-bg); border: 1px solid var(--pt-good); border-left: 4px solid var(--pt-good); }
+      .pt-pill-high{ background: var(--pt-bad-bg);  border: 1px solid var(--pt-bad);  border-left: 4px solid var(--pt-bad);  }
+      .pt-pill-pct { font-size: 16px; font-weight: bold; }
+      .pt-pill-ok   .pt-pill-pct { color: #1e8449; }
+      .pt-pill-high .pt-pill-pct { color: #c0392b; }
+      .pt-pill-detail { font-size: 11px; color: #5a6b7b; }
+      /* predictor */
+      .pt-predictor {
+        margin-top: 8px; padding: 6px 8px; border-radius: var(--pt-radius);
+        background: var(--pt-info-bg); border: 1px solid var(--pt-info-border);
+        font-size: 12px; color: var(--pt-text); text-align: center;
+      }
+      .pt-predictor.pt-done { background: var(--pt-done-bg); border-color: var(--pt-done-border); }
+      .pt-predictor-bar {
+        height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px;
+        margin-top: 5px; overflow: hidden;
+      }
+      .pt-predictor-fill {
+        height: 100%; background: var(--pt-info); border-radius: 2px;
+        transition: width 0.5s ease; width: 0%;
+      }
+      .pt-predictor.pt-done .pt-predictor-fill { background: var(--pt-good); }
+      .pt-live-dagtotaal { margin-top: 2px; font-size: 11px; color: var(--pt-info); font-style: italic; }
+      .pt-day-equiv { display: block; font-size: 0.85em; color: var(--pt-muted); font-style: italic; }
+      .pt-forgotten-marker { color: #f39c12; font-weight: bold; }
+    `;
+    document.head.appendChild(style);
   }
 
   listenForSettingChanges() {
@@ -198,8 +266,6 @@ class PrimeTimePlus {
     const span = document.createElement('span');
     span.className = 'pt-day-equiv';
     span.setAttribute(TAG, 'injected');
-    span.style.cssText =
-      'display:block;font-size:0.85em;color:#7f8c8d;font-style:italic;';
     span.textContent = this.formatDays(totalMinutes, minutesPerDay);
     element.setAttribute(TAG, 'block-suffix');
     element.appendChild(span);
@@ -248,17 +314,9 @@ class PrimeTimePlus {
     const widget = document.createElement('div');
     widget.className = 'pt-predictor';
     widget.setAttribute(TAG, 'injected');
-    widget.style.cssText = [
-      'margin-top:8px',
-      'padding:6px 8px',
-      'background:#ecf6ff',
-      'border:1px solid #b8d8f0',
-      'border-radius:4px',
-      'font-size:12px',
-      'color:#2c3e50',
-      'text-align:center',
-    ].join(';');
-    widget.textContent = 'Klaar om …';
+    widget.innerHTML =
+      '<span class="pt-predictor-text">Klaar om …</span>' +
+      '<div class="pt-predictor-bar"><div class="pt-predictor-fill"></div></div>';
     panel.appendChild(widget);
     this.refreshPredictor();
   }
@@ -266,10 +324,16 @@ class PrimeTimePlus {
   refreshPredictor() {
     const widget = document.querySelector('.pt-predictor');
     if (!widget) return;
+    const textEl = widget.querySelector('.pt-predictor-text') || widget;
+    const fillEl = widget.querySelector('.pt-predictor-fill');
+    const setFill = (pct) => {
+      if (fillEl) fillEl.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    };
 
     const inOutTimes = this.readHomeBookings();
     if (!inOutTimes) {
-      widget.textContent = 'Geen In-tijd gevonden';
+      textEl.textContent = 'Geen In-tijd gevonden';
+      setFill(0);
       return;
     }
 
@@ -283,23 +347,23 @@ class PrimeTimePlus {
     const extraBreak = Math.max(0, breakMinutes - 30);
     const finishMinutes = firstIn + this.settings.workingDayMinutes + extraBreak;
     const stillNeeded = finishMinutes - nowMinutes;
+    const worked = this.computeWorkedMinutes(inOutTimes.ins, inOutTimes.outs, nowMinutes);
+    const pct = worked / this.settings.workingDayMinutes * 100;
 
     if (stillNeeded <= 0) {
       const overshoot = -stillNeeded;
-      widget.textContent =
-        'Doel bereikt (+' + this.formatHHMM(overshoot) + ')';
-      widget.style.background = '#e3f7e3';
-      widget.style.borderColor = '#9bd49b';
+      textEl.textContent = 'Doel bereikt (+' + this.formatHHMM(overshoot) + ')';
+      widget.classList.add('pt-done');
+      setFill(100);
       return;
     }
 
     const fh = Math.floor(finishMinutes / 60) % 24;
     const fm = finishMinutes % 60;
     const finishStr = String(fh).padStart(2, '0') + ':' + String(fm).padStart(2, '0');
-    widget.textContent =
-      'Tot ' + finishStr + ' (nog ' + this.formatHHMM(stillNeeded) + ')';
-    widget.style.background = '#ecf6ff';
-    widget.style.borderColor = '#b8d8f0';
+    textEl.textContent = 'Tot ' + finishStr + ' (nog ' + this.formatHHMM(stillNeeded) + ')';
+    widget.classList.remove('pt-done');
+    setFill(pct);
   }
 
   readHomeBookings() {
@@ -384,13 +448,7 @@ class PrimeTimePlus {
       }
     }
 
-    if (!document.querySelector('#pt-dag-height-fix')) {
-      const style = document.createElement('style');
-      style.id = 'pt-dag-height-fix';
-      style.setAttribute(TAG, 'injected');
-      style.textContent = '.gwt-ScrollTable.journal { height: 720px !important; }';
-      document.head.appendChild(style);
-    }
+
   }
 
   enhanceDagRow(row) {
@@ -470,8 +528,6 @@ class PrimeTimePlus {
       marker.className = 'pt-forgotten-marker';
       marker.textContent = ' ⚠';
       marker.title = 'Vergeten Uit-boeking?';
-      marker.style.color = '#f39c12';
-      marker.style.fontWeight = 'bold';
       firstCell.appendChild(marker);
     }
   }
@@ -488,12 +544,6 @@ class PrimeTimePlus {
       badge = document.createElement('div');
       badge.className = 'pt-live-dagtotaal';
       badge.setAttribute(TAG, 'injected');
-      badge.style.cssText = [
-        'margin-top:2px',
-        'font-size:11px',
-        'color:#1f6feb',
-        'font-style:italic',
-      ].join(';');
       dagtotaalCell.appendChild(badge);
     }
     const text = stillIn ? '⏱ ' + this.formatHHMM(worked) : this.formatHHMM(worked);
@@ -531,18 +581,8 @@ class PrimeTimePlus {
     const container = document.createElement('div');
     container.className = 'pt-aggregates';
     container.setAttribute(TAG, 'injected');
-    container.style.cssText = [
-      'margin:8px 0',
-      'padding:8px 12px',
-      'background:#fafafa',
-      'border:1px solid #ddd',
-      'border-radius:4px',
-      'font-size:12px',
-      'color:#2c3e50',
-    ].join(';');
 
     const targetWeek = 5 * this.settings.workingDayMinutes;
-
     const targetLabel = this.formatHHMM(targetWeek);
     const currentWeekKey = this.isoWeekKey(new Date());
 
@@ -551,21 +591,16 @@ class PrimeTimePlus {
         const weekNum = w.label.replace(/^\d{4}-W0?/, '');
         const isCurrent = w.label === currentWeekKey;
         const deltaCell = isCurrent
-          ? '<td style="padding:2px 8px;text-align:right;color:#888">lopend</td>'
+          ? '<td class="pt-delta-cur">lopend</td>'
           : (() => {
               const delta = w.workedMinutes - targetWeek;
               const sign = delta >= 0 ? '+' : '';
-              const color = delta >= 0 ? '#1a7f37' : '#cf222e';
-              return '<td style="padding:2px 8px;text-align:right;color:' + color + '">' + sign + this.formatHHMM(delta) + '</td>';
+              return '<td class="' + (delta >= 0 ? 'pt-delta-pos' : 'pt-delta-neg') + '">' + sign + this.formatHHMM(delta) + '</td>';
             })();
         return (
-          '<tr><td style="padding:2px 8px">Week ' +
-          weekNum +
-          '</td><td style="padding:2px 8px;text-align:right">' +
+          '<tr><td>Week ' + weekNum + '</td><td>' +
           this.formatHHMM(w.workedMinutes) +
-          '</td><td style="padding:2px 8px;text-align:right">' +
-          w.daysWorked +
-          ' d</td>' + deltaCell + '</tr>'
+          '</td><td>' + w.daysWorked + ' d</td>' + deltaCell + '</tr>'
         );
       })
       .join('');
@@ -573,29 +608,18 @@ class PrimeTimePlus {
     const monthRows = aggregates.months
       .map((m) => {
         return (
-          '<tr><td style="padding:2px 8px"><b>' +
-          m.label +
-          '</b></td><td style="padding:2px 8px;text-align:right"><b>' +
+          '<tr><td><b>' + m.label + '</b></td><td><b>' +
           this.formatHHMM(m.workedMinutes) +
-          '</b></td><td style="padding:2px 8px;text-align:right"><b>' +
-          m.daysWorked +
-          ' d</b></td><td style="padding:2px 8px;text-align:right;color:#888">—</td></tr>'
+          '</b></td><td><b>' + m.daysWorked + ' d</b></td><td class="pt-delta-cur">—</td></tr>'
         );
       })
       .join('');
 
     container.innerHTML =
-      '<div style="font-weight:bold;margin-bottom:4px">PrimeTime+ totalen</div>' +
-      '<table style="border-collapse:collapse;width:100%">' +
-      '<thead><tr style="border-bottom:1px solid #ccc">' +
-      '<th style="text-align:left;padding:2px 8px">Periode</th>' +
-      '<th style="text-align:right;padding:2px 8px">Gewerkt</th>' +
-      '<th style="text-align:right;padding:2px 8px">Dagen</th>' +
-      '<th style="text-align:right;padding:2px 8px">Δ vs ' + targetLabel + '</th>' +
-      '</tr></thead><tbody>' +
-      weekRows +
-      monthRows +
-      '</tbody></table>';
+      '<div class="pt-agg-header">PrimeTime+ totalen</div>' +
+      '<table><thead><tr>' +
+      '<th>Periode</th><th>Gewerkt</th><th>Dagen</th><th>Δ vs ' + targetLabel + '</th>' +
+      '</tr></thead><tbody>' + weekRows + monthRows + '</tbody></table>';
 
     const parent = table.parentElement;
     parent.insertBefore(container, table);
@@ -611,21 +635,13 @@ class PrimeTimePlus {
         if (presence <= 0) return '';
         const pct = Math.round((m.homeMinutes / presence) * 100);
         const high = pct > 50;
-        const bg = high ? '#fdecea' : '#eafaf1';
-        const border = high ? '#e74c3c' : '#27ae60';
-        const fg = high ? '#c0392b' : '#1e8449';
         const detail =
           this.formatHHMM(m.homeMinutes) + ' thuis / ' +
           this.formatHHMM(presence) + ' totaal';
         return (
-          '<div title="' + m.label + ' — ' + detail + '" style="' +
-          'flex:1 1 160px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;' +
-          'padding:8px 12px;border:1px solid ' + border + ';border-left:4px solid ' + border + ';' +
-          'border-radius:6px;background:' + bg + '">' +
-          '<span style="font-size:16px;font-weight:bold;color:' + fg + '">' +
-          pct + '% Thuiswerk</span>' +
-          '<span style="font-size:11px;color:#5a6b7b">' +
-          m.label + ' · ' + detail + '</span>' +
+          '<div title="' + m.label + ' — ' + detail + '" class="pt-pill ' + (high ? 'pt-pill-high' : 'pt-pill-ok') + '">' +
+          '<span class="pt-pill-pct">' + pct + '% Thuiswerk</span>' +
+          '<span class="pt-pill-detail">' + m.label + ' · ' + detail + '</span>' +
           '</div>'
         );
       })
@@ -635,11 +651,9 @@ class PrimeTimePlus {
     const container = document.createElement('div');
     container.className = 'pt-thuiswerk';
     container.setAttribute(TAG, 'injected');
-    container.style.cssText = 'margin:8px 0';
     container.innerHTML =
-      '<div style="font-weight:bold;margin-bottom:6px">Thuiswerk-ratio</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
-      pills + '</div>';
+      '<div class="pt-thuiswerk-header">Thuiswerk-ratio</div>' +
+      '<div class="pt-thuiswerk-pills">' + pills + '</div>';
 
     const parent = table.parentElement;
     parent.insertBefore(container, parent.querySelector('.pt-aggregates') || table);

@@ -3,11 +3,44 @@
 <head>
   <meta charset="utf-8">
   <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f8f9fa;
+      --border: #ecf0f1;
+      --text: #2c3e50;
+      --text-muted: #7f8c8d;
+      --text-subtle: #95a5a6;
+      --status-ok-bg: #d5f4e6;
+      --status-ok-fg: #27ae60;
+      --status-warn-bg: #ffeaa7;
+      --status-warn-fg: #b9770e;
+      --toggle-off: #bdc3c7;
+      --toggle-on: #27ae60;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1e;
+        --surface: #2a2a2a;
+        --border: #3a3a3a;
+        --text: #e8eaed;
+        --text-muted: #9aa0a6;
+        --text-subtle: #6c757d;
+        --status-ok-bg: #1a3a27;
+        --status-ok-fg: #34c77a;
+        --status-warn-bg: #3a2f00;
+        --status-warn-fg: #f5c518;
+        --toggle-off: #4a4a4a;
+        --toggle-on: #34c77a;
+      }
+    }
+
     body {
       width: 320px;
       padding: 16px;
       font-family: Arial, sans-serif;
       margin: 0;
+      background: var(--bg);
+      color: var(--text);
     }
 
     .header {
@@ -18,36 +51,40 @@
     .logo {
       font-size: 18px;
       font-weight: bold;
-      color: #2c3e50;
+      color: var(--text);
     }
 
     .version {
       font-size: 12px;
-      color: #7f8c8d;
+      color: var(--text-muted);
     }
 
     .status {
       text-align: center;
       padding: 8px;
-      background-color: #d5f4e6;
+      background-color: var(--status-ok-bg);
       border-radius: 4px;
-      color: #27ae60;
+      color: var(--status-ok-fg);
       font-weight: bold;
       margin-bottom: 14px;
     }
 
     .status.warn {
-      background-color: #ffeaa7;
-      color: #b9770e;
+      background-color: var(--status-warn-bg);
+      color: var(--status-warn-fg);
       cursor: pointer;
     }
 
     h3 {
-      font-size: 13px;
-      color: #2c3e50;
-      margin: 12px 0 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: 14px 0 4px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.7px;
+    }
+
+    h3:first-of-type {
+      margin-top: 6px;
     }
 
     .toggle {
@@ -55,38 +92,62 @@
       align-items: center;
       justify-content: space-between;
       padding: 6px 0;
-      border-top: 1px solid #ecf0f1;
-    }
-
-    .toggle:first-of-type {
-      border-top: none;
+      border-top: 1px solid var(--border);
     }
 
     .toggle-label {
       font-size: 13px;
-      color: #2c3e50;
+      color: var(--text);
       flex: 1;
-      padding-right: 8px;
+      padding-right: 12px;
     }
 
     .toggle-label small {
       display: block;
-      color: #7f8c8d;
+      color: var(--text-muted);
       font-size: 11px;
       margin-top: 2px;
     }
 
+    /* CSS toggle switch — no JS needed */
     input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
+      appearance: none;
+      -webkit-appearance: none;
+      width: 34px;
+      height: 18px;
+      background: var(--toggle-off);
+      border-radius: 9px;
       cursor: pointer;
+      position: relative;
       flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    input[type="checkbox"]::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      transition: left 0.18s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    input[type="checkbox"]:checked {
+      background: var(--toggle-on);
+    }
+
+    input[type="checkbox"]:checked::after {
+      left: 18px;
     }
 
     .footer {
       margin-top: 14px;
       font-size: 11px;
-      color: #95a5a6;
+      color: var(--text-subtle);
       text-align: center;
     }
   </style>
@@ -94,12 +155,12 @@
 <body>
   <div class="header">
     <div class="logo">Prime Time Plus</div>
-    <div class="version">v1.1.0</div>
+    <div class="version" id="version">v1.1.0</div>
   </div>
 
   <div class="status" id="status">✓ Extension Active</div>
 
-  <h3>Functies</h3>
+  <h3>Alle pagina's</h3>
 
   <label class="toggle">
     <span class="toggle-label">Dagen-suffix
@@ -109,11 +170,22 @@
   </label>
 
   <label class="toggle">
+    <span class="toggle-label">Tooltips
+      <small>Voegt dagen toe aan hover-tooltips</small>
+    </span>
+    <input type="checkbox" data-setting="tooltips">
+  </label>
+
+  <h3>Home</h3>
+
+  <label class="toggle">
     <span class="toggle-label">Klaar-om voorspeller
-      <small>Toont op Home wanneer 7:36 is bereikt</small>
+      <small>Toont op Home wanneer 8:06 is bereikt</small>
     </span>
     <input type="checkbox" data-setting="predictor">
   </label>
+
+  <h3>Dagresultaten</h3>
 
   <label class="toggle">
     <span class="toggle-label">Live dagtotaal
@@ -150,14 +222,7 @@
     <input type="checkbox" data-setting="forgottenClockout">
   </label>
 
-  <label class="toggle">
-    <span class="toggle-label">Tooltips
-      <small>Voegt dagen toe aan hover-tooltips</small>
-    </span>
-    <input type="checkbox" data-setting="tooltips">
-  </label>
-
-  <div class="footer">Werkdag = 7u 36m</div>
+  <div class="footer">Verlofdag = 7u 36m &nbsp;·&nbsp; Werkdag = 8u 06m</div>
 
   <script src="popup.js"></script>
 </body>
