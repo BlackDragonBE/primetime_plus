@@ -93,6 +93,9 @@ class PrimeTimePlus {
       .pt-pill-pct { font-size: 16px; font-weight: bold; }
       .pt-pill-ok   .pt-pill-pct { color: #1e8449; }
       .pt-pill-high .pt-pill-pct { color: #c0392b; }
+      .pt-pill-office { font-size: 12px; font-weight: 600; }
+      .pt-pill-ok   .pt-pill-office { color: #1e8449; }
+      .pt-pill-high .pt-pill-office { color: #c0392b; }
       .pt-pill-detail { font-size: 11px; color: #5a6b7b; }
       /* predictor */
       .pt-predictor {
@@ -158,6 +161,7 @@ class PrimeTimePlus {
   refresh() {
     this._journalTable = undefined;
     this.lastRefreshAt = Date.now();
+    this.injectStyles(); // clearAllEnhancements() removes the tagged <style>; re-add it
     try {
       this.enhanceHomeSaldi();
       this.enhanceHomePredictor();
@@ -638,9 +642,14 @@ class PrimeTimePlus {
         const detail =
           this.formatHHMM(m.homeMinutes) + ' thuis / ' +
           this.formatHHMM(presence) + ' totaal';
+        const needed = Math.max(0, m.homeMinutes - m.officeMinutes);
+        const office = high
+          ? '+' + this.formatHHMM(needed) + ' (' + this.formatDays(needed) + ') kantoor nodig'
+          : '✓ onder 50%';
         return (
           '<div title="' + m.label + ' — ' + detail + '" class="pt-pill ' + (high ? 'pt-pill-high' : 'pt-pill-ok') + '">' +
           '<span class="pt-pill-pct">' + pct + '% Thuiswerk</span>' +
+          '<span class="pt-pill-office">' + office + '</span>' +
           '<span class="pt-pill-detail">' + m.label + ' · ' + detail + '</span>' +
           '</div>'
         );
