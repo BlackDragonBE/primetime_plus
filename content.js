@@ -543,24 +543,29 @@ class PrimeTimePlus {
 
     const targetWeek = 5 * this.settings.workingDayMinutes;
 
+    const targetLabel = this.formatHHMM(targetWeek);
+    const currentWeekKey = this.isoWeekKey(new Date());
+
     const weekRows = aggregates.weeks
       .map((w) => {
-        const delta = w.workedMinutes - targetWeek;
-        const sign = delta >= 0 ? '+' : '';
-        const color = delta >= 0 ? '#1a7f37' : '#cf222e';
+        const weekNum = w.label.replace(/^\d{4}-W0?/, '');
+        const isCurrent = w.label === currentWeekKey;
+        const deltaCell = isCurrent
+          ? '<td style="padding:2px 8px;text-align:right;color:#888">lopend</td>'
+          : (() => {
+              const delta = w.workedMinutes - targetWeek;
+              const sign = delta >= 0 ? '+' : '';
+              const color = delta >= 0 ? '#1a7f37' : '#cf222e';
+              return '<td style="padding:2px 8px;text-align:right;color:' + color + '">' + sign + this.formatHHMM(delta) + '</td>';
+            })();
         return (
           '<tr><td style="padding:2px 8px">Week ' +
-          w.label +
+          weekNum +
           '</td><td style="padding:2px 8px;text-align:right">' +
           this.formatHHMM(w.workedMinutes) +
           '</td><td style="padding:2px 8px;text-align:right">' +
-          this.formatDays(w.workedMinutes) +
-          '</td><td style="padding:2px 8px;text-align:right;color:' +
-          color +
-          '">' +
-          sign +
-          this.formatHHMM(delta) +
-          '</td></tr>'
+          w.daysWorked +
+          ' d</td>' + deltaCell + '</tr>'
         );
       })
       .join('');
@@ -573,10 +578,8 @@ class PrimeTimePlus {
           '</b></td><td style="padding:2px 8px;text-align:right"><b>' +
           this.formatHHMM(m.workedMinutes) +
           '</b></td><td style="padding:2px 8px;text-align:right"><b>' +
-          this.formatDays(m.workedMinutes) +
-          '</b></td><td style="padding:2px 8px;text-align:right">' +
           m.daysWorked +
-          ' × dag</td></tr>'
+          ' d</b></td><td style="padding:2px 8px;text-align:right;color:#888">—</td></tr>'
         );
       })
       .join('');
@@ -588,7 +591,7 @@ class PrimeTimePlus {
       '<th style="text-align:left;padding:2px 8px">Periode</th>' +
       '<th style="text-align:right;padding:2px 8px">Gewerkt</th>' +
       '<th style="text-align:right;padding:2px 8px">Dagen</th>' +
-      '<th style="text-align:right;padding:2px 8px">Δ vs doel</th>' +
+      '<th style="text-align:right;padding:2px 8px">Δ vs ' + targetLabel + '</th>' +
       '</tr></thead><tbody>' +
       weekRows +
       monthRows +
