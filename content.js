@@ -204,6 +204,12 @@ class PrimeTimePlus {
       const marker = el.querySelector('.pt-forgotten-marker');
       if (marker) marker.remove();
     });
+    document.querySelectorAll('[' + TAG + '="tooltip"]').forEach((el) => {
+      const orig = el.getAttribute('data-pt-original-title');
+      if (orig !== null) el.setAttribute('title', orig);
+      el.removeAttribute('data-pt-original-title');
+      el.removeAttribute(TAG);
+    });
   }
 
   /* ===========================================================
@@ -860,6 +866,7 @@ class PrimeTimePlus {
           return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes) + ')';
         });
         if (changed) {
+          el.setAttribute('data-pt-original-title', title);
           el.setAttribute(TAG, 'tooltip');
           el.setAttribute('title', newTitle);
         }
