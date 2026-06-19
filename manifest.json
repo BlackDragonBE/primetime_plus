@@ -15,7 +15,7 @@
       "matches": [
         "https://provincieantwerpen.get.be/Primetime/webapp/*"
       ],
-      "js": ["content.js"],
+      "js": ["settings.js", "content.js"],
       "run_at": "document_end"
     }
   ],

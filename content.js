@@ -15,18 +15,6 @@ const DUTCH_MONTHS = {
   jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dec: 11,
 };
 
-const DEFAULT_SETTINGS = {
-  daysSuffix: true,
-  predictor: true,
-  liveDagtotaal: true,
-  weekMonthTotals: true,
-  thuiswerkRatio: true,
-  colorCoding: true,
-  forgottenClockout: true,
-  tooltips: true,
-  workingDayMinutes: 8 * 60 + 6,
-  leaveDayMinutes: 7 * 60 + 36,
-};
 
 class PrimeTimePlus {
   constructor() {
@@ -35,6 +23,7 @@ class PrimeTimePlus {
     this.liveTimer = null;
     this.predictorTimer = null;
     this.lastRefreshAt = 0;
+    this._journalTable = undefined;
 
     this.loadSettings().then(() => this.start());
   }
@@ -75,7 +64,7 @@ class PrimeTimePlus {
         --pt-muted: #7f8c8d; --pt-text: #2c3e50;
         --pt-card-bg: #fafafa; --pt-card-border: #ddd; --pt-radius: 4px;
       }
-      .gwt-ScrollTable.journal { height: 720px !important; }
+      .gwt-ScrollTable.journal { height: ${JOURNAL_HEIGHT_PX}px !important; }
       /* shared card base */
       .pt-aggregates, .pt-thuiswerk {
         margin: 8px 0; padding: 8px 12px; border-radius: var(--pt-radius);
@@ -167,6 +156,7 @@ class PrimeTimePlus {
   }
 
   refresh() {
+    this._journalTable = undefined;
     this.lastRefreshAt = Date.now();
     try {
       this.enhanceHomeSaldi();
@@ -181,11 +171,13 @@ class PrimeTimePlus {
 
   tickLive() {
     if (!this.settings.liveDagtotaal) return;
+    if (!document.querySelector('tr.journal-grid-row')) return;
     this.updateLiveDagtotaal();
   }
 
   tickPredictor() {
     if (!this.settings.predictor) return;
+    if (!document.querySelector('.pt-predictor')) return;
     this.refreshPredictor();
   }
 
@@ -344,7 +336,7 @@ class PrimeTimePlus {
     const sortedOuts = [...inOutTimes.outs].sort((a, b) => a - b);
     const firstIn = sortedIns[0];
     const breakMinutes = this.computeBreakMinutes(sortedIns, sortedOuts, nowMinutes);
-    const extraBreak = Math.max(0, breakMinutes - 30);
+    const extraBreak = Math.max(0, breakMinutes - LUNCH_BREAK_MIN);
     const finishMinutes = firstIn + this.settings.workingDayMinutes + extraBreak;
     const stillNeeded = finishMinutes - nowMinutes;
     const worked = this.computeWorkedMinutes(inOutTimes.ins, inOutTimes.outs, nowMinutes);
@@ -427,8 +419,10 @@ class PrimeTimePlus {
   /* Supervisor view renders several table.dataTable elements; the journal is
    * not always the first. Pick the one that actually holds the day rows. */
   findJournalTable() {
-    return [...document.querySelectorAll('table.dataTable')]
+    if (this._journalTable !== undefined) return this._journalTable;
+    this._journalTable = [...document.querySelectorAll('table.dataTable')]
       .find((t) => t.querySelector('tr.journal-grid-row')) || null;
+    return this._journalTable;
   }
 
   enhanceDagresultaten() {
@@ -576,11 +570,14 @@ class PrimeTimePlus {
   /* ---------- Aggregates (week / month) ---------- */
 
   renderDagAggregates(table, aggregates) {
-    document.querySelectorAll('.pt-aggregates').forEach((el) => el.remove());
-
-    const container = document.createElement('div');
-    container.className = 'pt-aggregates';
-    container.setAttribute(TAG, 'injected');
+    const parent = table.parentElement;
+    let container = parent.querySelector('.pt-aggregates');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'pt-aggregates';
+      container.setAttribute(TAG, 'injected');
+      parent.insertBefore(container, table);
+    }
 
     const targetWeek = 5 * this.settings.workingDayMinutes;
     const targetLabel = this.formatHHMM(targetWeek);
@@ -620,21 +617,18 @@ class PrimeTimePlus {
       '<table><thead><tr>' +
       '<th>Periode</th><th>Gewerkt</th><th>Dagen</th><th>Δ vs ' + targetLabel + '</th>' +
       '</tr></thead><tbody>' + weekRows + monthRows + '</tbody></table>';
-
-    const parent = table.parentElement;
-    parent.insertBefore(container, table);
   }
 
   /* Home-vs-office ratio, one pill per month. Pill turns red when home
-   * work exceeds 50% of clocked presence (the telework ceiling). */
+   * work exceeds TELEWORK_CEILING_PCT% of clocked presence. */
   renderThuiswerkPanel(table, months) {
-    document.querySelectorAll('.pt-thuiswerk').forEach((el) => el.remove());
+    const parent = table.parentElement;
     const pills = months
       .map((m) => {
         const presence = m.homeMinutes + m.officeMinutes;
         if (presence <= 0) return '';
         const pct = Math.round((m.homeMinutes / presence) * 100);
-        const high = pct > 50;
+        const high = pct > TELEWORK_CEILING_PCT;
         const detail =
           this.formatHHMM(m.homeMinutes) + ' thuis / ' +
           this.formatHHMM(presence) + ' totaal';
@@ -646,17 +640,21 @@ class PrimeTimePlus {
         );
       })
       .join('');
-    if (!pills) return;
 
-    const container = document.createElement('div');
-    container.className = 'pt-thuiswerk';
-    container.setAttribute(TAG, 'injected');
+    let container = parent.querySelector('.pt-thuiswerk');
+    if (!pills) {
+      if (container) container.remove();
+      return;
+    }
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'pt-thuiswerk';
+      container.setAttribute(TAG, 'injected');
+      parent.insertBefore(container, parent.querySelector('.pt-aggregates') || table);
+    }
     container.innerHTML =
       '<div class="pt-thuiswerk-header">Thuiswerk-ratio</div>' +
       '<div class="pt-thuiswerk-pills">' + pills + '</div>';
-
-    const parent = table.parentElement;
-    parent.insertBefore(container, parent.querySelector('.pt-aggregates') || table);
   }
 
   computeAggregates(rows) {
@@ -837,23 +835,36 @@ class PrimeTimePlus {
 
   enhanceTooltips() {
     if (!this.settings.tooltips) return;
-    const elements = document.querySelectorAll('[title]');
-    elements.forEach((el) => {
-      if (el.getAttribute(TAG) === 'tooltip') return;
-      const title = el.getAttribute('title');
-      if (!title) return;
-      let changed = false;
-      const newTitle = title.replace(/(?<![\d:])(-?\d+:\d{2})(?![\d:])/g, (match) => {
-        const minutes = this.parseTime(match);
-        if (minutes === null) return match;
-        changed = true;
-        return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes) + ')';
+    const roots = [];
+    const saldi = document.querySelector('.balancesWidgetTitle');
+    if (saldi) roots.push(saldi.closest('.panel') || saldi.parentElement);
+    const balancePanel = document.querySelector('.balancePanel');
+    if (balancePanel) roots.push(balancePanel);
+    const jt = this.findJournalTable();
+    if (jt) roots.push(jt.parentElement || jt);
+    if (roots.length === 0) return;
+
+    const seen = new WeakSet();
+    for (const root of roots) {
+      root.querySelectorAll('[title]').forEach((el) => {
+        if (seen.has(el)) return;
+        seen.add(el);
+        if (el.getAttribute(TAG) === 'tooltip') return;
+        const title = el.getAttribute('title');
+        if (!title) return;
+        let changed = false;
+        const newTitle = title.replace(/(?<![\d:])(-?\d+:\d{2})(?![\d:])/g, (match) => {
+          const minutes = this.parseTime(match);
+          if (minutes === null) return match;
+          changed = true;
+          return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes) + ')';
+        });
+        if (changed) {
+          el.setAttribute(TAG, 'tooltip');
+          el.setAttribute('title', newTitle);
+        }
       });
-      if (changed) {
-        el.setAttribute(TAG, 'tooltip');
-        el.setAttribute('title', newTitle);
-      }
-    });
+    }
   }
 }
 

@@ -60,11 +60,17 @@
     }
 
     .status {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
       text-align: center;
       padding: 8px;
       background-color: var(--status-ok-bg);
+      border: none;
       border-radius: 4px;
       color: var(--status-ok-fg);
+      font-family: inherit;
+      font-size: inherit;
       font-weight: bold;
       margin-bottom: 14px;
     }
@@ -155,10 +161,10 @@
 <body>
   <div class="header">
     <div class="logo">Prime Time Plus</div>
-    <div class="version" id="version">v1.1.0</div>
+    <div class="version" id="version"></div>
   </div>
 
-  <div class="status" id="status">✓ Extension Active</div>
+  <button class="status" id="status" type="button" disabled>✓ Extension Active</button>
 
   <h3>Alle pagina's</h3>
 
@@ -224,6 +230,7 @@
 
   <div class="footer">Verlofdag = 7u 36m &nbsp;·&nbsp; Werkdag = 8u 06m</div>
 
+  <script src="settings.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

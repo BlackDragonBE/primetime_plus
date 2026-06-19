@@ -1,34 +1,26 @@
-const DEFAULT_SETTINGS = {
-  daysSuffix: true,
-  predictor: true,
-  liveDagtotaal: true,
-  weekMonthTotals: true,
-  thuiswerkRatio: true,
-  colorCoding: true,
-  forgottenClockout: true,
-  tooltips: true,
-};
+// DEFAULT_SETTINGS is loaded from settings.js
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('version').textContent = 'v' + chrome.runtime.getManifest().version;
   setupStatus();
   setupToggles();
 });
 
 function setupStatus() {
+  const status = document.getElementById('status');
+  status.addEventListener('click', () => {
+    chrome.tabs.update({ url: 'https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl' });
+  });
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const currentTab = tabs[0];
-    const status = document.getElementById('status');
-    const isPrimeTimeApp = currentTab?.url?.includes('provincieantwerpen.get.be/Primetime/webapp');
-
+    const isPrimeTimeApp = tabs[0]?.url?.includes('provincieantwerpen.get.be/Primetime/webapp');
     if (isPrimeTimeApp) {
       status.textContent = '✓ Extension Active';
       status.className = 'status';
+      status.disabled = true;
     } else {
       status.textContent = '⚠ Open Prime Time';
       status.className = 'status warn';
-      status.addEventListener('click', () => {
-        chrome.tabs.update({ url: 'https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl' });
-      });
+      status.disabled = false;
     }
   });
 }
