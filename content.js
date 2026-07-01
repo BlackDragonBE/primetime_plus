@@ -15,6 +15,11 @@ const DUTCH_MONTHS = {
   jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dec: 11,
 };
 
+// Date#getDay() (0=Sun..6=Sat) -> the halfTime* setting key for that weekday.
+const WEEKDAY_HALFTIME_KEYS = {
+  1: 'halfTimeMon', 2: 'halfTimeTue', 3: 'halfTimeWed', 4: 'halfTimeThu', 5: 'halfTimeFri',
+};
+
 
 class PrimeTimePlus {
   constructor() {
@@ -242,10 +247,32 @@ class PrimeTimePlus {
   }
 
   formatDays(totalMinutes, minutesPerDay) {
-    const divisor = minutesPerDay !== undefined ? minutesPerDay : this.settings.workingDayMinutes;
+    const divisor = minutesPerDay !== undefined ? minutesPerDay : this.settings.workingDayMinutes * this.averageWeekFactor();
     const days = totalMinutes / divisor;
     const rounded = Math.round(days * 100) / 100;
     return rounded + 'd';
+  }
+
+  /* Half time can apply to specific weekdays only, so a given date's
+   * werkdag/verlofdag length depends on which weekday it falls on. */
+  dayFactor(date) {
+    const key = WEEKDAY_HALFTIME_KEYS[date.getDay()];
+    return key && this.settings[key] ? 0.5 : 1;
+  }
+
+  workingMinutesFor(date) {
+    return this.settings.workingDayMinutes * this.dayFactor(date);
+  }
+
+  leaveMinutesFor(date) {
+    return this.settings.leaveDayMinutes * this.dayFactor(date);
+  }
+
+  /* Balances (Saldi, Afwezigheidsplanning) aren't tied to one calendar date,
+   * so their day-equivalent uses the average factor across mon-fri. */
+  averageWeekFactor() {
+    const keys = Object.values(WEEKDAY_HALFTIME_KEYS);
+    return keys.reduce((sum, k) => sum + (this.settings[k] ? 0.5 : 1), 0) / keys.length;
   }
 
   /* ===========================================================
@@ -293,7 +320,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applySuffix(el, text, minutes, this.settings.leaveDayMinutes);
+      this.applySuffix(el, text, minutes, this.settings.leaveDayMinutes * this.averageWeekFactor());
     });
   }
 
@@ -347,10 +374,11 @@ class PrimeTimePlus {
     const firstIn = sortedIns[0];
     const breakMinutes = this.computeBreakMinutes(sortedIns, sortedOuts, nowMinutes);
     const extraBreak = Math.max(0, breakMinutes - LUNCH_BREAK_MIN);
-    const finishMinutes = firstIn + this.settings.workingDayMinutes + extraBreak;
+    const targetMinutes = this.workingMinutesFor(now);
+    const finishMinutes = firstIn + targetMinutes + extraBreak;
     const stillNeeded = finishMinutes - nowMinutes;
     const worked = this.computeWorkedMinutes(inOutTimes.ins, inOutTimes.outs, nowMinutes);
-    const pct = worked / this.settings.workingDayMinutes * 100;
+    const pct = worked / targetMinutes * 100;
 
     if (stillNeeded <= 0) {
       const overshoot = -stillNeeded;
@@ -473,7 +501,7 @@ class PrimeTimePlus {
     const outTimes = this.readMultiTimes(outCell);
 
     if (this.settings.daysSuffix) {
-      this.enhanceSaldoCell(saldoCell);
+      this.enhanceSaldoCell(saldoCell, dateInfo);
     }
 
     if (this.settings.colorCoding) {
@@ -489,7 +517,8 @@ class PrimeTimePlus {
     }
   }
 
-  enhanceSaldoCell(cell) {
+  enhanceSaldoCell(cell, dateInfo) {
+    const divisor = dateInfo ? this.leaveMinutesFor(dateInfo.date) : this.settings.leaveDayMinutes;
     const valueTds = cell.querySelectorAll('table tbody tr td:nth-child(2)');
     valueTds.forEach((td) => {
       if (td.getAttribute(TAG) === 'suffix') return;
@@ -497,7 +526,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applySuffix(td, text, minutes, this.settings.leaveDayMinutes);
+      this.applySuffix(td, text, minutes, divisor);
     });
   }
 
@@ -589,7 +618,7 @@ class PrimeTimePlus {
       parent.insertBefore(container, table);
     }
 
-    const targetWeek = 5 * this.settings.workingDayMinutes;
+    const targetWeek = 5 * this.settings.workingDayMinutes * this.averageWeekFactor();
     const targetLabel = this.formatHHMM(targetWeek);
     const currentWeekKey = this.isoWeekKey(new Date());
 
@@ -840,7 +869,7 @@ class PrimeTimePlus {
       if (!this.isHHMM(text)) return;
       const minutes = this.parseTime(text);
       if (minutes === null) return;
-      this.applyBlockSuffix(el, minutes, this.settings.leaveDayMinutes);
+      this.applyBlockSuffix(el, minutes, this.settings.leaveDayMinutes * this.averageWeekFactor());
     });
   }
 
@@ -872,7 +901,7 @@ class PrimeTimePlus {
           const minutes = this.parseTime(match);
           if (minutes === null) return match;
           changed = true;
-          return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes) + ')';
+          return match + ' (' + this.formatDays(minutes, this.settings.leaveDayMinutes * this.averageWeekFactor()) + ')';
         });
         if (changed) {
           el.setAttribute('data-pt-original-title', title);

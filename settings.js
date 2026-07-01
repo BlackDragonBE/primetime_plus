@@ -11,6 +11,11 @@ const DEFAULT_SETTINGS = {
   tooltips: true,
   workingDayMinutes: 8 * 60 + 6,
   leaveDayMinutes: 7 * 60 + 36,
+  halfTimeMon: false,
+  halfTimeTue: false,
+  halfTimeWed: false,
+  halfTimeThu: false,
+  halfTimeFri: false,
 };
 
 // ponytail: named constants so magic numbers are searchable
