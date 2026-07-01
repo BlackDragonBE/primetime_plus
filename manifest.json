@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Prime Time Plus",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Enhance Prime Time web app with additional functionality",
   "permissions": [
     "activeTab",

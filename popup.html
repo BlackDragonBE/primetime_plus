@@ -60,19 +60,19 @@
     }
 
     .status {
-      display: block;
+      display: none;
       width: 100%;
       box-sizing: border-box;
       text-align: center;
-      padding: 8px;
+      padding: 5px;
       background-color: var(--status-ok-bg);
       border: none;
       border-radius: 4px;
       color: var(--status-ok-fg);
       font-family: inherit;
-      font-size: inherit;
+      font-size: 12px;
       font-weight: bold;
-      margin-bottom: 14px;
+      margin-bottom: 8px;
     }
 
     .open-app {
@@ -80,13 +80,14 @@
       width: 100%;
       box-sizing: border-box;
       text-align: center;
-      padding: 8px;
+      padding: 5px;
       background-color: var(--toggle-on);
       border-radius: 4px;
       color: #fff;
+      font-size: 12px;
       font-weight: bold;
       text-decoration: none;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .status.warn {
@@ -111,7 +112,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 0;
+      padding: 4px 0;
       border-top: 1px solid var(--border);
     }
 
@@ -119,14 +120,14 @@
       font-size: 13px;
       color: var(--text);
       flex: 1;
-      padding-right: 12px;
+      padding-right: 8px;
     }
 
-    .toggle-label small {
-      display: block;
-      color: var(--text-muted);
+    .info-icon {
+      color: var(--text-subtle);
+      cursor: help;
+      margin-left: 4px;
       font-size: 11px;
-      margin-top: 2px;
     }
 
     /* CSS toggle switch — no JS needed */
@@ -178,71 +179,55 @@
     <div class="version" id="version"></div>
   </div>
 
-  <a class="status warn" id="update-banner" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none; margin-bottom:10px;">⬆ Update available</a>
+  <a class="status warn" id="update-banner" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none; margin-bottom:8px;">⬆ Update available</a>
 
   <a class="open-app" href="https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl" target="_blank" rel="noopener">↗ Open PrimeTime</a>
 
-  <button class="status" id="status" type="button" disabled>✓ Extension Active</button>
+  <button class="status warn" id="status" type="button">⚠ Open Prime Time</button>
 
   <h3>Alle pagina's</h3>
 
   <label class="toggle">
-    <span class="toggle-label">Dagen-suffix
-      <small>Toont (Xd) achter HH:MM op Home, Dagresultaten en Afwezigheidsplanning</small>
-    </span>
+    <span class="toggle-label">Dagen-suffix<span class="info-icon" title="Toont (Xd) achter HH:MM op Home, Dagresultaten en Afwezigheidsplanning">ⓘ</span></span>
     <input type="checkbox" data-setting="daysSuffix">
   </label>
 
   <label class="toggle">
-    <span class="toggle-label">Tooltips
-      <small>Voegt dagen toe aan hover-tooltips</small>
-    </span>
+    <span class="toggle-label">Tooltips<span class="info-icon" title="Voegt dagen toe aan hover-tooltips">ⓘ</span></span>
     <input type="checkbox" data-setting="tooltips">
   </label>
 
   <h3>Home</h3>
 
   <label class="toggle">
-    <span class="toggle-label">Klaar-om voorspeller
-      <small>Toont op Home wanneer 8:06 is bereikt</small>
-    </span>
+    <span class="toggle-label">Klaar-om voorspeller<span class="info-icon" title="Toont op Home wanneer 8:06 is bereikt">ⓘ</span></span>
     <input type="checkbox" data-setting="predictor">
   </label>
 
   <h3>Dagresultaten</h3>
 
   <label class="toggle">
-    <span class="toggle-label">Live dagtotaal
-      <small>Loopt mee op vandaag in Dagresultaten</small>
-    </span>
+    <span class="toggle-label">Live dagtotaal<span class="info-icon" title="Loopt mee op vandaag in Dagresultaten">ⓘ</span></span>
     <input type="checkbox" data-setting="liveDagtotaal">
   </label>
 
   <label class="toggle">
-    <span class="toggle-label">Week- en maandtotalen
-      <small>Toont aggregaten boven Dagresultaten-tabel</small>
-    </span>
+    <span class="toggle-label">Week- en maandtotalen<span class="info-icon" title="Toont aggregaten boven Dagresultaten-tabel">ⓘ</span></span>
     <input type="checkbox" data-setting="weekMonthTotals">
   </label>
 
   <label class="toggle">
-    <span class="toggle-label">Thuiswerk-ratio
-      <small>Toont % thuiswerk per maand boven Dagresultaten (rood &gt; 50%)</small>
-    </span>
+    <span class="toggle-label">Thuiswerk-ratio<span class="info-icon" title="Toont % thuiswerk per maand boven Dagresultaten (rood > 50%)">ⓘ</span></span>
     <input type="checkbox" data-setting="thuiswerkRatio">
   </label>
 
   <label class="toggle">
-    <span class="toggle-label">Kleurcodering
-      <small>Groen/rood per rij vs Rooster</small>
-    </span>
+    <span class="toggle-label">Kleurcodering<span class="info-icon" title="Groen/rood per rij vs Rooster">ⓘ</span></span>
     <input type="checkbox" data-setting="colorCoding">
   </label>
 
   <label class="toggle">
-    <span class="toggle-label">Vergeten Uit-boeking
-      <small>Markeert dagen met In zonder Uit</small>
-    </span>
+    <span class="toggle-label">Vergeten Uit-boeking<span class="info-icon" title="Markeert dagen met In zonder Uit">ⓘ</span></span>
     <input type="checkbox" data-setting="forgottenClockout">
   </label>
 

@@ -35,15 +35,7 @@ function setupStatus() {
   });
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const isPrimeTimeApp = tabs[0]?.url?.includes('provincieantwerpen.get.be/Primetime/webapp');
-    if (isPrimeTimeApp) {
-      status.textContent = '✓ Extension Active';
-      status.className = 'status';
-      status.disabled = true;
-    } else {
-      status.textContent = '⚠ Open Prime Time';
-      status.className = 'status warn';
-      status.disabled = false;
-    }
+    status.style.display = isPrimeTimeApp ? 'none' : 'block';
   });
 }
 
