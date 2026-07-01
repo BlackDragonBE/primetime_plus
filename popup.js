@@ -29,13 +29,10 @@ function checkForUpdate() {
 }
 
 function setupStatus() {
-  const status = document.getElementById('status');
-  status.addEventListener('click', () => {
-    chrome.tabs.update({ url: 'https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl' });
-  });
+  const openApp = document.getElementById('open-app');
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const isPrimeTimeApp = tabs[0]?.url?.includes('provincieantwerpen.get.be/Primetime/webapp');
-    status.style.display = isPrimeTimeApp ? 'none' : 'block';
+    openApp.style.display = isPrimeTimeApp ? 'none' : 'block';
   });
 }
 
