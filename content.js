@@ -29,6 +29,8 @@ class PrimeTimePlus {
     this.predictorTimer = null;
     this.lastRefreshAt = 0;
     this._journalTable = undefined;
+    this._jvuCache = { key: null, minutes: 0 };
+    this._jvuFetching = false;
 
     this.loadSettings().then(() => this.start());
   }
@@ -374,7 +376,7 @@ class PrimeTimePlus {
     const firstIn = sortedIns[0];
     const breakMinutes = this.computeBreakMinutes(sortedIns, sortedOuts, nowMinutes);
     const extraBreak = Math.max(0, breakMinutes - LUNCH_BREAK_MIN);
-    const targetMinutes = this.workingMinutesFor(now);
+    const targetMinutes = Math.max(0, this.workingMinutesFor(now) - this.ensureTodayJvuMinutes(now));
     const finishMinutes = firstIn + targetMinutes + extraBreak;
     const stillNeeded = finishMinutes - nowMinutes;
     const worked = this.computeWorkedMinutes(inOutTimes.ins, inOutTimes.outs, nowMinutes);
@@ -423,6 +425,57 @@ class PrimeTimePlus {
     });
     if (ins.length === 0) return null;
     return { ins, outs };
+  }
+
+  /* JVU (jaarlijks verlof uur) taken today isn't reflected in the rooster
+   * target, so it's read from the "Mijn kalender" widget's day-detail
+   * popup and subtracted from the predictor's still-needed time. The
+   * popup is only opened once per day (cached), never on every refresh. */
+  ensureTodayJvuMinutes(now) {
+    const key = now.toDateString();
+    if (this._jvuCache.key === key || this._jvuFetching) return this._jvuCache.minutes;
+    this.fetchTodayJvuMinutes(key);
+    return this._jvuCache.minutes;
+  }
+
+  fetchTodayJvuMinutes(key) {
+    const cell = document.querySelector('.home-calendar-panel .cell.today');
+    if (!cell) return;
+    if (document.querySelector('.window-closeIcon')) return; // a detail popup is already open elsewhere
+    this._jvuFetching = true;
+    cell.click();
+
+    const deadline = Date.now() + 8000;
+    const poll = () => {
+      const title = Array.from(document.querySelectorAll('.absencesTitle'))
+        .find((el) => el.textContent.trim() === 'Afwezigheden:');
+      if (!title) {
+        if (Date.now() < deadline) {
+          setTimeout(poll, 150);
+        } else {
+          // Timed out - close whatever we opened so the busy-check above
+          // doesn't get stuck forever, and let the next tick retry.
+          document.querySelector('.window-closeIcon')?.click();
+          this._jvuFetching = false;
+        }
+        return;
+      }
+      const rows = Array.from(title.nextElementSibling?.querySelectorAll('table.simpleTableSkin > tbody > tr') || []);
+      let minutes = 0;
+      rows.forEach((row) => {
+        const code = row.children[1]?.textContent.trim() || '';
+        const time = row.children[3]?.textContent.trim() || '';
+        if (/^JVU\b/.test(code)) {
+          const m = time.match(/(\d+):(\d{2})/);
+          if (m) minutes += Number(m[1]) * 60 + Number(m[2]);
+        }
+      });
+      document.querySelector('.window-closeIcon')?.click();
+      this._jvuCache = { key, minutes };
+      this._jvuFetching = false;
+      this.refreshPredictor();
+    };
+    poll();
   }
 
   computeWorkedMinutes(ins, outs, nowMinutes) {
