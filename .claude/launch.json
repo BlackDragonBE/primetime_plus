@@ -4,8 +4,9 @@
     {
       "name": "popup-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-p", "4444", "."],
-      "port": 4444
+      "runtimeArgs": ["serve", "."],
+      "port": 4444,
+      "autoPort": true
     }
   ]
 }
