@@ -445,7 +445,7 @@ class PrimeTimePlus {
     this._jvuFetching = true;
     cell.click();
 
-    const deadline = Date.now() + 8000;
+    const deadline = Date.now() + 30000;
     const poll = () => {
       const title = Array.from(document.querySelectorAll('.absencesTitle'))
         .find((el) => el.textContent.trim() === 'Afwezigheden:');
