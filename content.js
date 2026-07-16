@@ -763,7 +763,7 @@ class PrimeTimePlus {
       if (cells.length < 8) return;
       const dateInfo = this.parseDatumCell(cells[0]);
       if (!dateInfo) return;
-      const dagtotaalMinutes = this.readSingleTimeCell(cells[7]);
+      const dagtotaalMinutes = this.readDagtotaalMinutes(cells[7]);
       if (dagtotaalMinutes === null) return;
       const presence = this.readAanwezigheidCell(cells[8]);
 
@@ -826,6 +826,22 @@ class PrimeTimePlus {
   readSingleTimeCell(cell) {
     if (!cell) return null;
     const text = cell.textContent.trim();
+    if (!this.isHHMM(text)) return null;
+    return this.parseTime(text);
+  }
+
+  /* Read the Dagtotaal minutes, ignoring any PrimeTime+ nodes we injected
+   * into the cell (e.g. the live Dagtotaal badge). Without this, today's row
+   * reads as "04:45⏱ 7:06", fails isHHMM, and gets dropped from the totals
+   * and Thuiswerk-ratio — silently excluding today's presence. */
+  readDagtotaalMinutes(cell) {
+    if (!cell) return null;
+    let text = '';
+    cell.childNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE && node.getAttribute(TAG)) return;
+      text += node.textContent;
+    });
+    text = text.trim();
     if (!this.isHHMM(text)) return null;
     return this.parseTime(text);
   }
