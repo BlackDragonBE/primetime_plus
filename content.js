@@ -16,6 +16,9 @@ const DUTCH_MONTHS = {
 };
 
 // Date#getDay() (0=Sun..6=Sat) -> the halfTime* setting key for that weekday.
+const JVU_RETRIES = 4;        // stop re-opening the day popup after this many zero reads
+const JVU_RETRY_MS = 20_000;
+
 const WEEKDAY_HALFTIME_KEYS = {
   1: 'halfTimeMon', 2: 'halfTimeTue', 3: 'halfTimeWed', 4: 'halfTimeThu', 5: 'halfTimeFri',
 };
@@ -29,7 +32,7 @@ class PrimeTimePlus {
     this.predictorTimer = null;
     this.lastRefreshAt = 0;
     this._journalTable = undefined;
-    this._jvuCache = { key: null, minutes: 0 };
+    this._jvuCache = { key: null, minutes: 0, tries: 0 };
     this._jvuFetching = false;
 
     this.loadSettings().then(() => this.start());
@@ -438,6 +441,23 @@ class PrimeTimePlus {
     return this._jvuCache.minutes;
   }
 
+  /* A zero read can mean "no leave today" or "the calendar widget hadn't
+   * loaded yet" - indistinguishable, so retry a few times shortly after
+   * load. A non-zero read is trusted immediately. */
+  scheduleJvuRetry() {
+    if (this._jvuCache.minutes > 0 || this._jvuCache.tries >= JVU_RETRIES) return;
+    setTimeout(() => {
+      this._jvuCache.key = null;
+      this.refreshPredictor();
+    }, JVU_RETRY_MS);
+  }
+
+  /* Adding leave happens on the Afwezigheidsplanning page; seeing it means
+   * today's cached value may be stale, so re-read once back on Home. */
+  invalidateJvuCache() {
+    this._jvuCache = { key: null, minutes: 0, tries: 0 };
+  }
+
   fetchTodayJvuMinutes(key) {
     const cell = document.querySelector('.home-calendar-panel .cell.today');
     if (!cell) return;
@@ -471,9 +491,10 @@ class PrimeTimePlus {
         }
       });
       document.querySelector('.window-closeIcon')?.click();
-      this._jvuCache = { key, minutes };
+      this._jvuCache = { key, minutes, tries: this._jvuCache.tries + 1 };
       this._jvuFetching = false;
       this.refreshPredictor();
+      this.scheduleJvuRetry();
     };
     poll();
   }
@@ -935,6 +956,7 @@ class PrimeTimePlus {
   enhanceAfwezigheidsplanning() {
     const panel = document.querySelector('.balancePanel');
     if (!panel) return;
+    this.invalidateJvuCache();
     const labels = panel.querySelectorAll('.gwt-HTML.primion-label.gwt-Label');
     labels.forEach((el) => {
       if (el.getAttribute(TAG) === 'block-suffix') return;
