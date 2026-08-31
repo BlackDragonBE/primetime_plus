@@ -34,6 +34,7 @@ class PrimeTimePlus {
     this._journalTable = undefined;
     this._jvuCache = { key: null, minutes: 0, tries: 0 };
     this._jvuFetching = false;
+    this._foreignPopupOpen = false;
 
     this.loadSettings().then(() => this.start());
   }
@@ -173,6 +174,7 @@ class PrimeTimePlus {
     this.lastRefreshAt = Date.now();
     this.injectStyles(); // clearAllEnhancements() removes the tagged <style>; re-add it
     try {
+      this.watchForeignPopup();
       this.enhanceHomeSaldi();
       this.enhanceHomePredictor();
       this.enhanceDagresultaten();
@@ -450,6 +452,19 @@ class PrimeTimePlus {
       this._jvuCache.key = null;
       this.refreshPredictor();
     }, JVU_RETRY_MS);
+  }
+
+  /* Leave can also be added from Home, through the calendar day popup.
+   * Any popup we didn't open ourselves is treated as a possible edit:
+   * when it closes, today's cached value is dropped. */
+  watchForeignPopup() {
+    const open = !!document.querySelector('.window-closeIcon');
+    if (open && !this._jvuFetching) {
+      this._foreignPopupOpen = true;
+    } else if (!open && this._foreignPopupOpen) {
+      this._foreignPopupOpen = false;
+      this.invalidateJvuCache();
+    }
   }
 
   /* Adding leave happens on the Afwezigheidsplanning page; seeing it means

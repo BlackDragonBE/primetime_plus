@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.5
+
+- Leave added from the Home calendar popup is picked up too: closing any popup
+  the extension didn't open itself invalidates today's cached JVU value.
+
 ## 1.2.4
 
 - JVU/verlof for today is re-read a few times (20s apart) after load when the
