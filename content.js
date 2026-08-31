@@ -671,8 +671,6 @@ class PrimeTimePlus {
       parent.insertBefore(container, table);
     }
 
-    const targetWeek = 5 * this.settings.workingDayMinutes * this.averageWeekFactor();
-    const targetLabel = this.formatHHMM(targetWeek);
     const currentWeekKey = this.isoWeekKey(new Date());
 
     const weekRows = aggregates.weeks
@@ -682,14 +680,14 @@ class PrimeTimePlus {
         const deltaCell = isCurrent
           ? '<td class="pt-delta-cur">lopend</td>'
           : (() => {
-              const delta = w.workedMinutes - targetWeek;
+              const delta = w.workedMinutes - w.targetMinutes;
               const sign = delta >= 0 ? '+' : '';
               return '<td class="' + (delta >= 0 ? 'pt-delta-pos' : 'pt-delta-neg') + '">' + sign + this.formatHHMM(delta) + '</td>';
             })();
         return (
           '<tr><td>Week ' + weekNum + '</td><td>' +
           this.formatHHMM(w.workedMinutes) +
-          '</td><td>' + w.daysWorked + ' d</td>' + deltaCell + '</tr>'
+          '</td><td>' + w.daysWorked + ' d</td><td>' + this.formatHHMM(w.targetMinutes) + '</td>' + deltaCell + '</tr>'
         );
       })
       .join('');
@@ -699,7 +697,7 @@ class PrimeTimePlus {
         return (
           '<tr><td><b>' + m.label + '</b></td><td><b>' +
           this.formatHHMM(m.workedMinutes) +
-          '</b></td><td><b>' + m.daysWorked + ' d</b></td><td class="pt-delta-cur">—</td></tr>'
+          '</b></td><td><b>' + m.daysWorked + ' d</b></td><td><b>' + this.formatHHMM(m.targetMinutes) + '</b></td><td class="pt-delta-cur">—</td></tr>'
         );
       })
       .join('');
@@ -707,7 +705,7 @@ class PrimeTimePlus {
     container.innerHTML =
       '<div class="pt-agg-header">PrimeTime+ totalen</div>' +
       '<table><thead><tr>' +
-      '<th>Periode</th><th>Gewerkt</th><th>Dagen</th><th>Δ vs ' + targetLabel + '</th>' +
+      '<th>Periode</th><th>Gewerkt</th><th>Dagen</th><th>Rooster</th><th>Δ</th>' +
       '</tr></thead><tbody>' + weekRows + monthRows + '</tbody></table>';
   }
 
@@ -765,6 +763,9 @@ class PrimeTimePlus {
       if (!dateInfo) return;
       const dagtotaalMinutes = this.readSingleTimeCell(cells[7]);
       if (dagtotaalMinutes === null) return;
+      // ponytail: the Rooster column already knows weekends, holidays and
+      // half days, so it is the per-week target -- no calendar math needed.
+      const targetMinutes = this.readRoosterMinutes(cells[1]) || 0;
       const presence = this.readAanwezigheidCell(cells[8]);
 
       const weekKey = this.isoWeekKey(dateInfo.date);
@@ -775,17 +776,20 @@ class PrimeTimePlus {
         weeks.set(weekKey, {
           label: weekKey,
           workedMinutes: 0,
+          targetMinutes: 0,
           daysWorked: 0,
         });
       }
       const w = weeks.get(weekKey);
       w.workedMinutes += dagtotaalMinutes;
+      w.targetMinutes += targetMinutes;
       if (dagtotaalMinutes > 0) w.daysWorked += 1;
 
       if (!months.has(monthKey)) {
         months.set(monthKey, {
           label: monthLabel,
           workedMinutes: 0,
+          targetMinutes: 0,
           daysWorked: 0,
           homeMinutes: 0,
           officeMinutes: 0,
@@ -793,6 +797,7 @@ class PrimeTimePlus {
       }
       const m = months.get(monthKey);
       m.workedMinutes += dagtotaalMinutes;
+      m.targetMinutes += targetMinutes;
       if (dagtotaalMinutes > 0) m.daysWorked += 1;
       m.homeMinutes += presence.home;
       m.officeMinutes += presence.office;
