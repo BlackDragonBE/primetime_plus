@@ -15,8 +15,12 @@ function checkForUpdate() {
       const current = chrome.runtime.getManifest().version.split('.').map(Number);
       let isNewer = false;
       for (let i = 0; i < Math.max(latest.length, current.length); i++) {
-        const l = latest[i] || 0, c = current[i] || 0;
-        if (l !== c) { isNewer = l > c; break; }
+        const latestPart = latest[i] || 0;
+        const currentPart = current[i] || 0;
+        if (latestPart !== currentPart) {
+          isNewer = latestPart > currentPart;
+          break;
+        }
       }
       if (isNewer) {
         const banner = document.getElementById('update-banner');
@@ -25,7 +29,9 @@ function checkForUpdate() {
         banner.style.display = 'block';
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      // Update checks are optional; keep the popup usable when offline.
+    });
 }
 
 function setupStatus() {
@@ -43,9 +49,7 @@ function setupToggles() {
       const key = input.dataset.setting;
       input.checked = items[key] !== false;
       input.addEventListener('change', () => {
-        const update = {};
-        update[key] = input.checked;
-        chrome.storage.local.set(update);
+        chrome.storage.local.set({ [key]: input.checked });
       });
     });
   });

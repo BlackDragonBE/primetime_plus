@@ -1,9 +1,5 @@
 /* Prime Time Plus - GWT app enhancer
  *
- * Adds working-day equivalents, aggregate totals, a leave-time predictor,
- * live day total, color coding and forgotten clock-out warnings to the
- * Province of Antwerp PrimeTime web app.
- *
  * The app is a single-page GWT client. Page detection is by DOM landmark
  * because the URL never changes.
  */
@@ -15,14 +11,23 @@ const DUTCH_MONTHS = {
   jul: 6, aug: 7, sep: 8, okt: 9, nov: 10, dec: 11,
 };
 
-// Date#getDay() (0=Sun..6=Sat) -> the halfTime* setting key for that weekday.
 const JVU_RETRIES = 4;        // stop re-opening the day popup after this many zero reads
 const JVU_RETRY_MS = 20_000;
 
+// Date#getDay() uses 1–5 for Monday–Friday.
 const WEEKDAY_HALFTIME_KEYS = {
   1: 'halfTimeMon', 2: 'halfTimeTue', 3: 'halfTimeWed', 4: 'halfTimeThu', 5: 'halfTimeFri',
 };
 
+// Journal cells include spacer columns between In, Uit and Dagtotaal.
+const JOURNAL_COLUMNS = {
+  date: 0,
+  schedule: 1,
+  in: 3,
+  out: 5,
+  total: 7,
+  presence: 8,
+};
 
 class PrimeTimePlus {
   constructor() {
@@ -30,7 +35,6 @@ class PrimeTimePlus {
     this.refreshScheduled = false;
     this.liveTimer = null;
     this.predictorTimer = null;
-    this.lastRefreshAt = 0;
     this._journalTable = undefined;
     this._jvuCache = { key: null, minutes: 0, tries: 0 };
     this._jvuFetching = false;
@@ -76,13 +80,11 @@ class PrimeTimePlus {
         --pt-card-bg: #fafafa; --pt-card-border: #ddd; --pt-radius: 4px;
       }
       .gwt-ScrollTable.journal { height: ${JOURNAL_HEIGHT_PX}px !important; }
-      /* shared card base */
       .pt-aggregates, .pt-thuiswerk {
         margin: 8px 0; padding: 8px 12px; border-radius: var(--pt-radius);
         background: var(--pt-card-bg); border: 1px solid var(--pt-card-border);
         font-size: 12px; color: var(--pt-text);
       }
-      /* shared panel header */
       .pt-agg-header, .pt-thuiswerk-header {
         font-weight: bold; margin-bottom: 6px;
         font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -108,7 +110,6 @@ class PrimeTimePlus {
       .pt-pill-ok   .pt-pill-office { color: #1e8449; }
       .pt-pill-high .pt-pill-office { color: #c0392b; }
       .pt-pill-detail { font-size: 11px; color: #5a6b7b; }
-      /* predictor */
       .pt-predictor {
         margin-top: 8px; padding: 6px 8px; border-radius: var(--pt-radius);
         background: var(--pt-info-bg); border: 1px solid var(--pt-info-border);
@@ -171,7 +172,6 @@ class PrimeTimePlus {
 
   refresh() {
     this._journalTable = undefined;
-    this.lastRefreshAt = Date.now();
     this.injectStyles(); // clearAllEnhancements() removes the tagged <style>; re-add it
     try {
       this.watchForeignPopup();
@@ -228,9 +228,7 @@ class PrimeTimePlus {
     });
   }
 
-  /* ===========================================================
-   * Time utilities
-   * =========================================================== */
+  // Time utilities
 
   isHHMM(text) {
     return /^-?\d+:\d{2}$/.test(text);
@@ -282,9 +280,7 @@ class PrimeTimePlus {
     return keys.reduce((sum, k) => sum + (this.settings[k] ? 0.5 : 1), 0) / keys.length;
   }
 
-  /* ===========================================================
-   * Generic suffix enhancer
-   * =========================================================== */
+  // Generic suffix enhancer
 
   applySuffix(element, originalText, totalMinutes, minutesPerDay) {
     if (!this.settings.daysSuffix) return;
@@ -299,6 +295,7 @@ class PrimeTimePlus {
     if (!this.settings.daysSuffix) return;
     if (element.getAttribute(TAG) === 'block-suffix') return;
     if (element.querySelector('.pt-day-equiv')) return;
+    // The planning sidebar clips inline overflow, so put the suffix on a new line.
     const span = document.createElement('span');
     span.className = 'pt-day-equiv';
     span.setAttribute(TAG, 'injected');
@@ -307,9 +304,7 @@ class PrimeTimePlus {
     element.appendChild(span);
   }
 
-  /* ===========================================================
-   * Home page - existing Saldi widget
-   * =========================================================== */
+  // Home page - existing Saldi widget
 
   enhanceHomeSaldi() {
     const widget = document.querySelector('.balancesWidgetTitle');
@@ -331,9 +326,7 @@ class PrimeTimePlus {
     });
   }
 
-  /* ===========================================================
-   * Home page - "Klaar om" leave-time predictor
-   * =========================================================== */
+  // Home page - "Klaar om" leave-time predictor
 
   enhanceHomePredictor() {
     if (!this.settings.predictor) return;
@@ -406,7 +399,6 @@ class PrimeTimePlus {
   readHomeBookings() {
     const table = document.querySelector('.home-widget-bookings');
     if (!table) return null;
-    const cells = Array.from(table.querySelectorAll('td.primion-grid-td, td.gwt-HTML, td'));
     const ins = [];
     const outs = [];
     const headerRow = table.tHead?.rows?.[0];
@@ -432,10 +424,9 @@ class PrimeTimePlus {
     return { ins, outs };
   }
 
-  /* JVU (jaarlijks verlof uur) taken today isn't reflected in the rooster
-   * target, so it's read from the "Mijn kalender" widget's day-detail
-   * popup and subtracted from the predictor's still-needed time. The
-   * popup is only opened once per day (cached), never on every refresh. */
+  /* JVU (jaarlijks verlof uur) reduces today's target but is only available
+   * in the calendar day popup. Cache it, retry zero reads, and invalidate
+   * the cache after possible leave edits. */
   ensureTodayJvuMinutes(now) {
     const key = now.toDateString();
     if (this._jvuCache.key === key || this._jvuFetching) return this._jvuCache.minutes;
@@ -467,8 +458,6 @@ class PrimeTimePlus {
     }
   }
 
-  /* Adding leave happens on the Afwezigheidsplanning page; seeing it means
-   * today's cached value may be stale, so re-read once back on Home. */
   invalidateJvuCache() {
     this._jvuCache = { key: null, minutes: 0, tries: 0 };
   }
@@ -539,9 +528,7 @@ class PrimeTimePlus {
     return total;
   }
 
-  /* ===========================================================
-   * Dagresultaten - per-row enhancements
-   * =========================================================== */
+  // Dagresultaten - per-row enhancements
 
   /* Supervisor view renders several table.dataTable elements; the journal is
    * not always the first. Pick the one that actually holds the day rows. */
@@ -568,19 +555,17 @@ class PrimeTimePlus {
         if (this.settings.thuiswerkRatio) this.renderThuiswerkPanel(table, aggregates.months);
       }
     }
-
-
   }
 
   enhanceDagRow(row) {
     const cells = Array.from(row.cells);
     if (cells.length < 8) return;
 
-    const datumCell = cells[0];
-    const roosterCell = cells[1];
-    const inCell = cells[3];
-    const outCell = cells[5];
-    const dagtotaalCell = cells[7];
+    const datumCell = cells[JOURNAL_COLUMNS.date];
+    const roosterCell = cells[JOURNAL_COLUMNS.schedule];
+    const inCell = cells[JOURNAL_COLUMNS.in];
+    const outCell = cells[JOURNAL_COLUMNS.out];
+    const dagtotaalCell = cells[JOURNAL_COLUMNS.total];
     const saldoCell = cells[cells.length - 1];
 
     const dateInfo = this.parseDatumCell(datumCell);
@@ -598,11 +583,11 @@ class PrimeTimePlus {
     }
 
     if (this.settings.forgottenClockout) {
-      this.markForgottenClockout(row, dateInfo, inTimes, outTimes, dagtotaalMinutes);
+      this.markForgottenClockout(row, dateInfo, inTimes, outTimes);
     }
 
     if (this.settings.liveDagtotaal && this.isToday(dateInfo)) {
-      this.applyLiveDagtotaal(row, dagtotaalCell, inTimes, outTimes, roosterMinutes);
+      this.applyLiveDagtotaal(dagtotaalCell, inTimes, outTimes, roosterMinutes);
     }
   }
 
@@ -635,7 +620,7 @@ class PrimeTimePlus {
     }
   }
 
-  markForgottenClockout(row, dateInfo, inTimes, outTimes, dagtotaalMinutes) {
+  markForgottenClockout(row, dateInfo, inTimes, outTimes) {
     if (!dateInfo || !this.isPast(dateInfo)) return;
     if (inTimes.length === 0) return;
     if (inTimes.length <= outTimes.length) return;
@@ -645,7 +630,7 @@ class PrimeTimePlus {
     row.style.outlineOffset = '-2px';
 
     if (!row.querySelector('.pt-forgotten-marker')) {
-      const firstCell = row.cells[0];
+      const firstCell = row.cells[JOURNAL_COLUMNS.date];
       const marker = document.createElement('span');
       marker.className = 'pt-forgotten-marker';
       marker.textContent = ' ⚠';
@@ -654,7 +639,7 @@ class PrimeTimePlus {
     }
   }
 
-  applyLiveDagtotaal(row, dagtotaalCell, inTimes, outTimes, roosterMinutes) {
+  applyLiveDagtotaal(dagtotaalCell, inTimes, outTimes, roosterMinutes) {
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const stillIn = inTimes.length > outTimes.length;
@@ -682,20 +667,20 @@ class PrimeTimePlus {
     const rows = Array.from(table.querySelectorAll('tr.journal-grid-row'));
     rows.forEach((row) => {
       const cells = Array.from(row.cells);
-      const datumCell = cells[0];
-      const inCell = cells[3];
-      const outCell = cells[5];
-      const dagtotaalCell = cells[7];
+      const datumCell = cells[JOURNAL_COLUMNS.date];
+      const inCell = cells[JOURNAL_COLUMNS.in];
+      const outCell = cells[JOURNAL_COLUMNS.out];
+      const dagtotaalCell = cells[JOURNAL_COLUMNS.total];
       const dateInfo = this.parseDatumCell(datumCell);
       if (!this.isToday(dateInfo)) return;
       const inTimes = this.readMultiTimes(inCell);
       const outTimes = this.readMultiTimes(outCell);
-      const roosterMinutes = this.readRoosterMinutes(cells[1]);
-      this.applyLiveDagtotaal(row, dagtotaalCell, inTimes, outTimes, roosterMinutes);
+      const roosterMinutes = this.readRoosterMinutes(cells[JOURNAL_COLUMNS.schedule]);
+      this.applyLiveDagtotaal(dagtotaalCell, inTimes, outTimes, roosterMinutes);
     });
   }
 
-  /* ---------- Aggregates (week / month) ---------- */
+  // Aggregates (week / month)
 
   renderDagAggregates(table, aggregates) {
     const parent = table.parentElement;
@@ -713,13 +698,13 @@ class PrimeTimePlus {
       .map((w) => {
         const weekNum = w.label.replace(/^\d{4}-W0?/, '');
         const isCurrent = w.label === currentWeekKey;
-        const deltaCell = isCurrent
-          ? '<td class="pt-delta-cur">lopend</td>'
-          : (() => {
-              const delta = w.workedMinutes - w.targetMinutes;
-              const sign = delta >= 0 ? '+' : '';
-              return '<td class="' + (delta >= 0 ? 'pt-delta-pos' : 'pt-delta-neg') + '">' + sign + this.formatHHMM(delta) + '</td>';
-            })();
+        let deltaCell = '<td class="pt-delta-cur">lopend</td>';
+        if (!isCurrent) {
+          const delta = w.workedMinutes - w.targetMinutes;
+          const sign = delta >= 0 ? '+' : '';
+          const className = delta >= 0 ? 'pt-delta-pos' : 'pt-delta-neg';
+          deltaCell = '<td class="' + className + '">' + sign + this.formatHHMM(delta) + '</td>';
+        }
         return (
           '<tr><td>Week ' + weekNum + '</td><td>' +
           this.formatHHMM(w.workedMinutes) +
@@ -795,14 +780,13 @@ class PrimeTimePlus {
     rows.forEach((row) => {
       const cells = Array.from(row.cells);
       if (cells.length < 8) return;
-      const dateInfo = this.parseDatumCell(cells[0]);
+      const dateInfo = this.parseDatumCell(cells[JOURNAL_COLUMNS.date]);
       if (!dateInfo) return;
-      const dagtotaalMinutes = this.readDagtotaalMinutes(cells[7]);
+      const dagtotaalMinutes = this.readDagtotaalMinutes(cells[JOURNAL_COLUMNS.total]);
       if (dagtotaalMinutes === null) return;
-      // ponytail: the Rooster column already knows weekends, holidays and
-      // half days, so it is the per-week target -- no calendar math needed.
-      const targetMinutes = this.readRoosterMinutes(cells[1]) || 0;
-      const presence = this.readAanwezigheidCell(cells[8]);
+      // Rooster already accounts for holidays and half days in the visible period.
+      const targetMinutes = this.readRoosterMinutes(cells[JOURNAL_COLUMNS.schedule]) || 0;
+      const presence = this.readAanwezigheidCell(cells[JOURNAL_COLUMNS.presence]);
 
       const weekKey = this.isoWeekKey(dateInfo.date);
       const monthKey = dateInfo.date.getFullYear() + '-' + (dateInfo.date.getMonth() + 1);
@@ -846,7 +830,7 @@ class PrimeTimePlus {
     };
   }
 
-  /* ---------- Cell parsers ---------- */
+  // Cell parsers
 
   parseDatumCell(cell) {
     if (!cell) return null;
@@ -858,6 +842,7 @@ class PrimeTimePlus {
     if (monthIdx === undefined) return null;
     const today = new Date();
     let year = today.getFullYear();
+    // The grid omits the year; handle December/January across the year boundary.
     const candidate = new Date(year, monthIdx, day);
     if (candidate.getMonth() === 11 && today.getMonth() <= 1) year -= 1;
     if (candidate.getMonth() === 0 && today.getMonth() === 11) year += 1;
@@ -871,10 +856,7 @@ class PrimeTimePlus {
     return this.parseTime(text);
   }
 
-  /* Read the Dagtotaal minutes, ignoring any PrimeTime+ nodes we injected
-   * into the cell (e.g. the live Dagtotaal badge). Without this, today's row
-   * reads as "04:45⏱ 7:06", fails isHHMM, and gets dropped from the totals
-   * and Thuiswerk-ratio — silently excluding today's presence. */
+  // Exclude live badges so the original time stays parseable for aggregates.
   readDagtotaalMinutes(cell) {
     if (!cell) return null;
     let text = '';
@@ -953,6 +935,7 @@ class PrimeTimePlus {
   isoWeekKey(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
+    // An ISO week belongs to the year containing its Thursday.
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNum = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
@@ -964,13 +947,12 @@ class PrimeTimePlus {
     return names[date.getMonth()] + ' ' + date.getFullYear();
   }
 
-  /* ===========================================================
-   * Afwezigheidsplanning - Saldi sidebar
-   * =========================================================== */
+  // Afwezigheidsplanning - Saldi sidebar
 
   enhanceAfwezigheidsplanning() {
     const panel = document.querySelector('.balancePanel');
     if (!panel) return;
+    // Leave may have changed here; re-read it when returning to Home.
     this.invalidateJvuCache();
     const labels = panel.querySelectorAll('.gwt-HTML.primion-label.gwt-Label');
     labels.forEach((el) => {
@@ -984,9 +966,7 @@ class PrimeTimePlus {
     });
   }
 
-  /* ===========================================================
-   * Tooltips - any HH:MM in title attribute
-   * =========================================================== */
+  // Tooltips - balance and journal times
 
   enhanceTooltips() {
     if (!this.settings.tooltips) return;

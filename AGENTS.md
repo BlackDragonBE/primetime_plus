@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Repository guidance
 
 ## What this is
 
@@ -13,7 +11,7 @@ There is nothing to build. To pick up a code change:
 1. `chrome://extensions/` → find **Prime Time Plus** → click the reload (↻) icon.
 2. Reload the PrimeTime tab.
 
-For browser-side verification, the live app is at `https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl` (the user is logged in). Navigate, then poke the DOM with the Chrome MCP `javascript_tool` — `read_page`, `find`, and `screenshot` are how features get sanity-checked.
+For browser-side verification, open the live app at `https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl` while logged in and inspect the DOM using browser developer tools.
 
 ## Architecture
 
@@ -70,6 +68,6 @@ There is a known commit (`5f4457c`) that fixed broken selectors after a GWT reco
 
 Managers have an extra **Supervisor → Dagresultaten** view showing any employee's data. It reuses the identical Dagresultaten table structure (same column indices, same nested Aanwezigheid table), so all Dagresultaten enhancers work there unchanged — **except** that the page has multiple `table.dataTable` siblings, hence `findJournalTable()`. If a Dagresultaten feature renders on the employee view but not for a manager, suspect the table selector first: probe `document.querySelectorAll('table.dataTable').length` vs which one holds `tr.journal-grid-row`. Diagnosable from a manager's console without manager access yourself — the visible layout is identical, only the table count differs.
 
-### Chrome MCP gotcha during dev
+### DOM inspection
 
-When inspecting the live app via `javascript_tool`, returning raw `innerHTML` strings can trip the MCP content filter and come back as `[BLOCKED: Cookie/query string data]`. Walk the DOM with `tagName` + `textContent` instead.
+Inspect only the elements needed for verification and avoid capturing cookies or sensitive query parameters.

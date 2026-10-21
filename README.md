@@ -4,14 +4,14 @@ A Chrome extension that enhances the Province of Antwerp Prime Time web applicat
 
 ## Features
 
-All toggleable from the extension popup. Defaults all on.
+All toggleable from the extension popup. Feature toggles default to on; half-time weekdays default to off.
 
 - **Day-equivalent suffix** — appends `(Xd)` after `HH:MM` time labels on:
   - Home page Saldi widget (e.g. `-11:10 (-1.47d)`)
   - Dagresultaten Saldo column (per-row running balances)
   - Afwezigheidsplanning sidebar (TJVu, WVu, BWVu, CFu, VVJu, TSAL5)
   - Hover tooltips containing `HH:MM`
-- **Klaar-om voorspeller** — on Home, predicts the clock-out time that hits the 7:36 working-day target based on your `In` time, updates every minute
+- **Klaar-om voorspeller** — on Home, predicts the clock-out time that hits the 8:06 working-day target based on your `In` time, updates every minute
 - **Live Dagtotaal** — on Dagresultaten today's row, runs the day total in real time while still clocked in
 - **Week- en maandtotalen** — aggregates the visible Dagresultaten period into per-ISO-week and per-month totals with target-delta
 - **Kleurcodering** — tints Dagresultaten rows green / red based on Dagtotaal vs Rooster (skips WE+FE / VRIJ)
@@ -25,9 +25,25 @@ All toggleable from the extension popup. Defaults all on.
 4. Open the Prime Time web app at `https://provincieantwerpen.get.be/Primetime/webapp/?locale=nl`
 5. Click the extension icon to toggle individual features
 
+## Sharing
+
+Run the packaging script from PowerShell:
+
+```powershell
+.\package.ps1
+```
+
+It creates `dist/primetime-plus.zip` with only the manifest, extension scripts, popup, and required icons. Repository metadata, documentation, local configuration, and the packaging script are excluded. Rerunning overwrites the existing ZIP.
+
+Use `-OutputDirectory C:\path\to\output` to choose a different destination. The script works from any current directory and supports Windows PowerShell 5.1 or newer.
+
+Recipients should extract the ZIP and use Chrome's **Load unpacked** option to select the extracted folder containing `manifest.json`.
+
 ## Configuration
 
-- **Working day**: 8 hours and 6 minutes (486 minutes), used as the day-equivalent divisor and the predictor target
+- **Working day**: 8 hours and 6 minutes (486 minutes), including lunch, used for the predictor target
+- **Leave day**: 7 hours and 36 minutes (456 minutes), excluding lunch, used for balance day-equivalents
+- **Half-time weekdays**: halve the working-day and leave-day values on selected weekdays; undated balances use the weekday average
 - **Persistence**: feature toggles are stored in `chrome.storage.local`
 
 ## Architecture
